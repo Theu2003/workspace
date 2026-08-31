@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    allowedHosts: ['.monkeycode-ai.live'],
+    allowedHosts: ['.monkeycode-ai.live', '.trycloudflare.com'],
     host: true,
     port: 5173,
     proxy: {
