@@ -89,7 +89,15 @@ router.post('/register/company', async (req, res) => {
     JSON.stringify(materials), coords?.latitude ?? null, coords?.longitude ?? null
   );
 
-  const token = signToken({ id: db.prepare('SELECT id FROM companies WHERE email = ?').get(email).id, role: 'company' });
+  const companyRow = db.prepare('SELECT id FROM companies WHERE email = ?').get(email);
+  const token = signToken({ id: companyRow.id, role: 'company' });
+
+  // Notificar todos os administradores sobre nova empresa pendente
+  const admins = db.prepare("SELECT id FROM users WHERE role = 'admin'").all();
+  for (const admin of admins) {
+    notifyUser(admin.id, 'nova_empresa_pendente', `Nova empresa "${name}" se cadastrou e aguarda aprovação. CNPJ: ${cnpj.replace(/\D/g, '')}.`);
+  }
+
   res.status(201).json({ token, role: 'company', company: { name, email } });
 });
 
