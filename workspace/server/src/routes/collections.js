@@ -18,6 +18,8 @@ function serializeCollection(row) {
     address: JSON.parse(row.address),
     latitude: row.latitude,
     longitude: row.longitude,
+    company_latitude: row.company_latitude,
+    company_longitude: row.company_longitude,
     date: row.date,
     period: row.period,
     observations: row.observations,
@@ -32,7 +34,8 @@ const USER_COLLECTION_COLUMNS = `
   c.id, c.user_id, c.company_id, c.materials, c.address, c.latitude, c.longitude,
   c.date, c.period, c.observations, c.status, c.created_at, c.updated_at,
   u.name AS user_name, u.phone AS user_phone,
-  co.name AS company_name
+  co.name AS company_name,
+  co.latitude AS company_latitude, co.longitude AS company_longitude
 `;
 
 router.post('/', requireRole('user'), (req, res) => {
@@ -320,5 +323,70 @@ function haversine(lat1, lon1, lat2, lon2) {
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
+// ── Mensagens empresa ↔ usuário (por coleta) ──────────────────────
+
+// Listar mensagens de uma coleta
+router.get('/:id/messages', (req, res) => {
+  const col = db.prepare('SELECT id, user_id, company_id FROM collections WHERE id = ?').get(req.params.id);
+  if (!col) return res.status(404).json({ error: 'Coleta não encontrada' });
+
+  // Verificar acesso: só o usuário dono da coleta ou a empresa atribuída
+  if (req.auth.role === 'user' && col.user_id !== req.auth.id) {
+    return res.status(403).json({ error: 'Acesso negado' });
+  }
+  if (req.auth.role === 'company' && col.company_id !== req.auth.id) {
+    return res.status(403).json({ error: 'Acesso negado' });
+  }
+
+  const messages = db.prepare(
+    `SELECT id, collection_id, sender_type, sender_id, message, is_read, created_at
+     FROM collection_messages WHERE collection_id = ? ORDER BY created_at ASC`
+  ).all(req.params.id);
+
+  // Marcar como lidas as mensagens do outro lado
+  const markType = req.auth.role;
+  db.prepare(
+    `UPDATE collection_messages SET is_read = 1
+     WHERE collection_id = ? AND sender_type != ? AND is_read = 0`
+  ).run(req.params.id, markType);
+
+  res.json({ messages });
+});
+
+// Enviar mensagem numa coleta
+router.post('/:id/messages', (req, res) => {
+  const { message } = req.body;
+  if (!message || !message.trim()) {
+    return res.status(400).json({ error: 'Mensagem não pode estar vazia' });
+  }
+
+  const col = db.prepare('SELECT id, user_id, company_id FROM collections WHERE id = ?').get(req.params.id);
+  if (!col) return res.status(404).json({ error: 'Coleta não encontrada' });
+
+  if (req.auth.role === 'user' && col.user_id !== req.auth.id) {
+    return res.status(403).json({ error: 'Acesso negado' });
+  }
+  if (req.auth.role === 'company' && col.company_id !== req.auth.id) {
+    return res.status(403).json({ error: 'Acesso negado' });
+  }
+
+  const senderType = req.auth.role; // 'user' ou 'company'
+  const info = db.prepare(
+    `INSERT INTO collection_messages (collection_id, sender_type, sender_id, message)
+     VALUES (?, ?, ?, ?)`
+  ).run(req.params.id, senderType, req.auth.id, message.trim());
+
+  // Notificar o outro lado
+  if (senderType === 'company' && col.user_id) {
+    notifyUser(col.user_id, 'mensagem_empresa',
+      `A empresa enviou uma mensagem sobre a coleta #${col.id}.`, col.id);
+  } else if (senderType === 'user' && col.company_id) {
+    notifyCompany(col.company_id, 'mensagem_usuario',
+      `O cliente enviou uma mensagem sobre a coleta #${col.id}.`, col.id);
+  }
+
+  res.status(201).json({ id: info.lastInsertRowid, message: 'Mensagem enviada' });
+});
 
 export default router;

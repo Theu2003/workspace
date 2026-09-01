@@ -42,6 +42,7 @@ interface MapViewProps {
   className?: string;
   onSelect?: (id: any) => void;
   height?: string;
+  routePositions?: [number, number][];
 }
 
 function FlyTo({ center, zoom }: { center: [number, number]; zoom: number }) {
@@ -52,7 +53,25 @@ function FlyTo({ center, zoom }: { center: [number, number]; zoom: number }) {
   return null;
 }
 
-export default function MapView({ markers, center, zoom = 14, showRadius, className = '', onSelect, height = '400px' }: MapViewProps) {
+function PolylinePath({ positions }: { positions: [number, number][] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!positions || positions.length < 2) return;
+    const line = L.polyline(positions, {
+      color: '#4a6741',
+      weight: 4,
+      opacity: 0.8,
+      dashArray: '8, 6'
+    }).addTo(map);
+    // Fit map to show entire route
+    const bounds = L.latLngBounds(positions);
+    map.fitBounds(bounds, { padding: [40, 40] });
+    return () => { line.remove(); };
+  }, [positions, map]);
+  return null;
+}
+
+export default function MapView({ markers, center, zoom = 14, showRadius, className = '', onSelect, height = '400px', routePositions }: MapViewProps) {
   const defaultCenter: [number, number] = useMemo(() => {
     if (center) return center;
     const valid = markers.filter((m) => m.latitude && m.longitude);
@@ -62,7 +81,7 @@ export default function MapView({ markers, center, zoom = 14, showRadius, classN
       const lng = valid.reduce((s, m) => s + m.longitude, 0) / valid.length;
       return [lat, lng];
     }
-    return [-23.5505, -46.6333];
+    return [-14.235, -51.9253]; // Centro do Brasil
   }, [markers, center]);
 
   const mapCenter: [number, number] = center ?? defaultCenter;
@@ -76,6 +95,9 @@ export default function MapView({ markers, center, zoom = 14, showRadius, classN
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <FlyTo center={center ?? mapCenter} zoom={zoom} />
+        {routePositions && routePositions.length >= 2 && (
+          <PolylinePath positions={routePositions} />
+        )}
         {markers.map((m, idx) =>
           m.latitude && m.longitude ? (
             <Marker

@@ -57,4 +57,29 @@ router.get('/list', requireRole('user'), (req, res) => {
   res.json({ companies, materials: MATERIAL_TYPES, userCity: addr?.city || null });
 });
 
+// Excluir própria conta (empresa)
+router.delete('/me', requireRole('company'), (req, res) => {
+  try {
+    const companyId = req.auth.id;
+    const company = db.prepare('SELECT id, name FROM companies WHERE id = ?').get(companyId);
+    if (!company) return res.status(404).json({ error: 'Empresa não encontrada' });
+
+    // Desatribuir coletas (set company_id pra NULL)
+    db.prepare('UPDATE collections SET company_id = NULL, status = ? WHERE company_id = ?').run('pendente', companyId);
+    // Notificar usuários afetados
+    db.prepare(`
+      UPDATE notifications SET company_id = NULL WHERE company_id = ?
+    `).run(companyId);
+    // Deletar mensagens da empresa
+    db.prepare("DELETE FROM messages WHERE (sender_type = 'company' AND sender_id = ?) OR (receiver_type = 'company' AND receiver_id = ?)").run(companyId, companyId);
+    // Deletar a empresa
+    db.prepare('DELETE FROM companies WHERE id = ?').run(companyId);
+
+    res.json({ message: 'Conta excluída com sucesso' });
+  } catch (err) {
+    console.error('Erro ao excluir empresa:', err);
+    res.status(500).json({ error: 'Erro ao excluir conta' });
+  }
+});
+
 export default router;

@@ -30,7 +30,6 @@ export default function Footer() {
             <h4 className="text-white font-semibold mb-3 text-sm uppercase tracking-wide">Navegação</h4>
             <ul className="space-y-2 text-sm">
               <li><Link to="/" className="hover:text-[#a6bf87] transition-colors">Início</Link></li>
-              <li><Link to="/informacoes" className="hover:text-[#a6bf87] transition-colors">Informações sobre reciclagem</Link></li>
               {isLogged && <li><Link to="/notificacoes" className="hover:text-[#a6bf87] transition-colors">Notificações</Link></li>}
               <li><Link to="/login" className="hover:text-[#a6bf87] transition-colors">Entrar</Link></li>
               <li><Link to="/cadastro" className="hover:text-[#a6bf87] transition-colors">Criar conta</Link></li>

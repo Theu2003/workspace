@@ -8,6 +8,7 @@ import collectionRoutes from './routes/collections.js';
 import notificationRoutes from './routes/notifications.js';
 import statsRoutes from './routes/stats.js';
 import adminRoutes from './routes/admin.js';
+import messageRoutes from './routes/messages.js';
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.use('/api/collections', collectionRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/messages', messageRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });

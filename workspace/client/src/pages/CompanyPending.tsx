@@ -27,12 +27,6 @@ export default function CompanyPending() {
           <div className="mt-6 space-y-2">
             <p className="text-xs text-stone-400">Enquanto isso, você pode:</p>
             <div className="flex flex-col gap-2">
-              <Link
-                to="/informacoes"
-                className="px-4 py-2.5 rounded-lg border border-stone-200 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
-              >
-                📖 Ler sobre reciclagem
-              </Link>
               <button
                 onClick={logout}
                 className="px-4 py-2.5 rounded-lg text-sm font-medium text-stone-400 hover:text-red-500 transition-colors"

@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { api } from '../api';
 import AddressFields from '../components/AddressFields';
+import { Trash2 } from '../components/Icons';
 
 const MATERIAL_OPTIONS = ['Papel', 'Papelão', 'Plástico', 'Vidro', 'Metal', 'Eletrônicos', 'Óleo de cozinha', 'Outros'];
 
 const inputClass = 'w-full px-3 py-2.5 rounded-lg border border-stone-200 focus:border-[#6b8f47] focus:ring-1 focus:ring-[#c9d9b5] outline-none transition-colors text-sm';
 
 export default function CompanyProfile() {
-  const { company, refreshProfile } = useAuth();
+  const { company, refreshProfile, logout } = useAuth();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '', responsible: '', phone: '', password: '',
     cep: '', state: '', city: '', neighborhood: '', street: '', number: '', complement: ''
@@ -49,6 +52,18 @@ export default function CompanyProfile() {
       setForm((f) => ({ ...f, password: '' }));
     } catch (err: any) {
       setMsg({ type: 'error', text: err.message });
+    }
+  }
+
+  async function deleteAccount() {
+    if (!confirm('Tem certeza que deseja excluir sua conta? Esta ação não pode ser desfeita.')) return;
+    if (!confirm('Última chance: realmente excluir sua conta e todos os dados?')) return;
+    try {
+      await api('/companies/me', { method: 'DELETE' });
+      alert('Conta excluída com sucesso.');
+      logout();
+    } catch (err: any) {
+      alert(err.message || 'Erro ao excluir conta');
     }
   }
 
@@ -123,6 +138,19 @@ export default function CompanyProfile() {
           Salvar alterações
         </button>
       </form>
+
+      <div className="mt-8 pt-6 border-t border-stone-200">
+        <h2 className="font-bold text-red-600 text-sm mb-2 flex items-center gap-1.5">
+          <Trash2 className="w-4 h-4" /> Zona de perigo
+        </h2>
+        <p className="text-xs text-stone-500 mb-3">Excluir sua conta removerá todos os seus dados permanentemente.</p>
+        <button
+          onClick={deleteAccount}
+          className="px-5 py-2.5 rounded-lg border border-red-300 text-red-600 font-semibold text-sm hover:bg-red-50 transition-colors"
+        >
+          Excluir minha conta
+        </button>
+      </div>
     </div>
   );
 }

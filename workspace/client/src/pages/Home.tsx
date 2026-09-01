@@ -3,15 +3,6 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { Leaf, Recycle, Truck, MapPin, Calendar, Users, CheckCircle } from '../components/Icons';
 
-const benefits = [
-  { icon: '🌿', title: 'Menos lixo nos aterros', desc: 'Cada material reciclado deixa de ocupar espaço em aterros e lixões.' },
-  { icon: '🌊', title: 'Preserva a natureza', desc: 'Reciclar diminui a extração de madeira, petróleo e minérios.' },
-  { icon: '💡', title: 'Economia de energia', desc: 'Produzir a partir de reciclados consome bem menos energia.' },
-  { icon: '🤝', title: 'Gera empregos', desc: 'A reciclagem sustenta milhares de famílias no Brasil.' },
-  { icon: '🌤', title: 'Menos poluição', desc: 'Menos queima de resíduos, menos contaminação do solo e da água.' },
-  { icon: '🏘', title: 'Bairro mais limpo', desc: 'Coleta organizada mantém as ruas mais agradáveis.' }
-];
-
 const steps = [
   { num: '1', icon: <Users className="w-5 h-5" />, title: 'Crie sua conta', desc: 'Cadastre-se de graça, rápido e sem complicação.' },
   { num: '2', icon: <Recycle className="w-5 h-5" />, title: 'Informe seus materiais', desc: 'Diga o que você tem e a quantidade aproximada.' },
@@ -48,7 +39,7 @@ export default function Home() {
               Reciclar não precisa ser complicado.
             </h1>
             <p className="mt-5 text-lg text-white/75 max-w-lg leading-relaxed">
-              Marque uma coleta, sepere o que tem, e a gente conecta você com uma empresa que vai buscar na sua casa. Sem filas, sem estresse.
+              Marque uma coleta, sepere o que tem, e uma empresa conectada ao ReciclaJá vai buscar na sua casa.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link
@@ -57,12 +48,7 @@ export default function Home() {
               >
                 <Calendar className="w-4 h-4" /> Agendar coleta
               </Link>
-              <Link
-                to="/informacoes"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/25 text-white/90 font-medium hover:bg-white/10 transition-colors"
-              >
-                Sobre reciclagem
-              </Link>
+
             </div>
             <div className="mt-10 flex gap-8 max-w-sm">
               <div>
@@ -137,43 +123,6 @@ export default function Home() {
             <Link to={scheduleLink} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#4a6741] text-white font-bold hover:bg-[#364a25] transition-colors">
               <Calendar className="w-4 h-4" /> Começar agora
             </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Benefícios */}
-      <section className="bg-white py-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-10 items-center">
-            <div>
-              <span className="text-[#6b8f47] font-semibold text-xs uppercase tracking-wider">Por que reciclar?</span>
-              <h2 className="mt-2 text-2xl sm:text-3xl font-extrabold text-stone-800">O que muda quando você separa o lixo</h2>
-              <p className="mt-3 text-stone-500 leading-relaxed">
-                Parece coisa pequena, mas separar o reciclável muda bastante coisa.
-                Menos lixo no chão, menos poluição nos rios, mais matéria-prima sendo reutilizada.
-              </p>
-              <div className="mt-7 space-y-4">
-                {[
-                  { label: 'Gratuito', desc: 'agendar coleta no ReciclaJá não custa nada.' },
-                  { label: 'Em tempo real', desc: 'você vê quando a empresa vai chegar.' },
-                  { label: 'Impacto de verdade', desc: 'cada coleta evita lixo nos rios e aterros.' }
-                ].map((item) => (
-                  <div key={item.label} className="flex gap-3">
-                    <div className="w-8 h-8 shrink-0 rounded-lg bg-[#e4ecda] text-[#4a6741] flex items-center justify-center mt-0.5"><CheckCircle className="w-4 h-4" /></div>
-                    <p className="text-stone-600 leading-relaxed"><strong className="text-stone-800">{item.label}:</strong> {item.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {benefits.map((b) => (
-                <div key={b.title} className="rounded-xl bg-[#f4f7f0] border border-[#e4ecda] p-5 hover:bg-[#e4ecda]/50 transition-colors">
-                  <span className="text-2xl">{b.icon}</span>
-                  <h3 className="mt-2 font-bold text-stone-800 text-sm">{b.title}</h3>
-                  <p className="mt-1 text-sm text-stone-500 leading-relaxed">{b.desc}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </section>

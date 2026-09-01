@@ -181,6 +181,27 @@ CREATE TABLE IF NOT EXISTS notifications (
   is_read INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sender_type TEXT NOT NULL CHECK(sender_type IN ('admin', 'company')),
+  sender_id INTEGER NOT NULL,
+  receiver_type TEXT NOT NULL CHECK(receiver_type IN ('admin', 'company')),
+  receiver_id INTEGER NOT NULL,
+  message TEXT NOT NULL,
+  is_read INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS collection_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  collection_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+  sender_type TEXT NOT NULL CHECK(sender_type IN ('user', 'company')),
+  sender_id INTEGER NOT NULL,
+  message TEXT NOT NULL,
+  is_read INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
 `);
 
 // Seed admin user

@@ -1,13 +1,23 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import type { Collection } from '../types';
 import StatusBadge from '../components/StatusBadge';
 import MapView from '../components/MapView';
-import { MapPin, Phone, Calendar, Clock, Search, CheckCircle, XCircle, MessageSquare, Recycle } from '../components/Icons';
+import { MapPin, Phone, Calendar, Clock, Search, CheckCircle, XCircle, MessageSquare, Recycle, Send, Truck } from '../components/Icons';
 import { useAuth } from '../auth';
 
 const STATUS_OPTIONS = ['', 'pendente', 'aceita', 'agendada', 'em_coleta', 'concluida', 'cancelada', 'recusada'];
+
+interface ChatMessage {
+  id: number;
+  collection_id: number;
+  sender_type: string;
+  sender_id: number;
+  message: string;
+  is_read: number;
+  created_at: string;
+}
 
 export default function CollectionRequests() {
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -17,6 +27,16 @@ export default function CollectionRequests() {
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
   const { userCity } = useAuth();
+
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Route state
+  const [routePositions, setRoutePositions] = useState<[number, number][] | null>(null);
+  const [routeLoading, setRouteLoading] = useState(false);
 
   const load = useCallback(async (filters: typeof filter) => {
     setLoading(true);
@@ -43,6 +63,75 @@ export default function CollectionRequests() {
   useEffect(() => {
     load(filter);
   }, [load]);
+
+  // Carregar chat quando coleta selecionada muda
+  useEffect(() => {
+    if (selected && ['aceita', 'agendada', 'em_coleta', 'concluida'].includes(selected.status)) {
+      loadChat(selected.id);
+    } else {
+      setChatMessages([]);
+    }
+  }, [selected?.id]);
+
+  // Auto-scroll no chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  // Buscar rota OSRM quando coleta aceita/agendada/em_coleta
+  useEffect(() => {
+    if (selected && selected.latitude && selected.longitude &&
+        selected.company_latitude && selected.company_longitude &&
+        ['aceita', 'agendada', 'em_coleta'].includes(selected.status)) {
+      fetchRoute(selected);
+    } else {
+      setRoutePositions(null);
+    }
+  }, [selected?.id, selected?.status]);
+
+  async function loadChat(collectionId: number) {
+    setChatLoading(true);
+    try {
+      const data = await api<{ messages: ChatMessage[] }>(`/collections/${collectionId}/messages`);
+      setChatMessages(data.messages || []);
+    } catch {
+      setChatMessages([]);
+    } finally {
+      setChatLoading(false);
+    }
+  }
+
+  async function sendChatMessage() {
+    if (!chatInput.trim() || !selected) return;
+    try {
+      await api(`/collections/${selected.id}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ message: chatInput.trim() })
+      });
+      setChatInput('');
+      await loadChat(selected.id);
+    } catch (err: any) {
+      setMessage(err.message || 'Erro ao enviar mensagem');
+    }
+  }
+
+  async function fetchRoute(col: Collection) {
+    setRouteLoading(true);
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${col.company_longitude},${col.company_latitude};${col.longitude},${col.latitude}?overview=simplified&geometries=geojson`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.routes && data.routes.length > 0) {
+        setRoutePositions(data.routes[0].geometry.coordinates.map((c: [number, number]) => [c[1], c[0]] as [number, number]));
+      } else {
+        setRoutePositions(null);
+      }
+    } catch {
+      setRoutePositions(null);
+    } finally {
+      setRouteLoading(false);
+    }
+  }
 
   async function updateStatus(id: number, status: string) {
     setMessage('');
@@ -167,10 +256,10 @@ export default function CollectionRequests() {
                     </>
                   )}
                   <button
-                    onClick={(e) => { e.stopPropagation(); navigate('/empresa/mapa'); }}
+                    onClick={(e) => { e.stopPropagation(); setSelected(c); }}
                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 text-xs font-semibold hover:bg-sky-100 transition-colors"
                   >
-                    <MapPin className="w-3.5 h-3.5" /> Mapa
+                    <MapPin className="w-3.5 h-3.5" /> Detalhes
                   </button>
                   <a
                     href={`tel:${c.user_phone.replace(/\D/g, '')}`}
@@ -205,15 +294,34 @@ export default function CollectionRequests() {
                 </div>
 
                 <div className="bg-white rounded-xl border border-stone-100 p-3.5">
-                  <h3 className="text-xs font-bold text-stone-500 mb-2 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-[#6b8f47]" /> Localização</h3>
+                  <h3 className="text-xs font-bold text-stone-500 mb-2 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-[#6b8f47]" /> Localização e Rota</h3>
                   {selected.latitude && selected.longitude ? (
                     <MapView
-                      markers={[{ latitude: selected.latitude, longitude: selected.longitude, label: selected.address.street }]}
-                      center={[selected.latitude, selected.longitude]}
+                      markers={[
+                        { latitude: selected.latitude, longitude: selected.longitude, label: selected.address.street, color: '#16a34a' },
+                        ...(selected.company_latitude && selected.company_longitude ? [{
+                          latitude: selected.company_latitude,
+                          longitude: selected.company_longitude,
+                          label: 'Sua empresa',
+                          color: '#f59e0b'
+                        }] : [])
+                      ]}
+                      center={routePositions ? undefined : [selected.latitude, selected.longitude]}
                       height="220px"
+                      routePositions={routePositions || undefined}
                     />
                   ) : (
                     <p className="text-[11px] text-stone-400">Localização não disponível.</p>
+                  )}
+                  {routeLoading && (
+                    <div className="flex items-center gap-1.5 mt-2 text-xs text-stone-400">
+                      <Truck className="w-3 h-3 animate-pulse" /> Calculando rota...
+                    </div>
+                  )}
+                  {routePositions && !routeLoading && (
+                    <div className="flex items-center gap-1.5 mt-2 text-[11px] text-[#537236] bg-[#f4f7f0] rounded-lg px-2.5 py-1.5">
+                      <Truck className="w-3 h-3" /> Rota calculada até o cliente
+                    </div>
                   )}
                 </div>
 
@@ -231,6 +339,59 @@ export default function CollectionRequests() {
                         <button onClick={() => updateStatus(selected.id, 'concluida')} className="py-2 rounded-lg bg-white text-[#364a25] font-semibold text-xs hover:bg-stone-50 transition-colors">Concluir coleta</button>
                       )}
                       <button onClick={() => updateStatus(selected.id, 'cancelada')} className="py-2 rounded-lg bg-red-500/20 border border-red-300/30 text-white font-semibold text-xs hover:bg-red-500/30 transition-colors">Cancelar coleta</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Chat empresa ↔ usuário */}
+                {['aceita', 'agendada', 'em_coleta', 'concluida'].includes(selected.status) && (
+                  <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
+                    <div className="p-3.5 border-b border-stone-100 bg-blue-50">
+                      <h3 className="font-semibold text-stone-800 text-xs flex items-center gap-1.5">
+                        <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+                        Chat com {selected.user_name}
+                      </h3>
+                    </div>
+                    <div className="h-[250px] overflow-y-auto p-3 space-y-2">
+                      {chatLoading ? (
+                        <p className="text-xs text-stone-400 text-center py-4">Carregando...</p>
+                      ) : chatMessages.length === 0 ? (
+                        <p className="text-xs text-stone-400 text-center py-4">Envie uma mensagem para iniciar a conversa.</p>
+                      ) : (
+                        chatMessages.map((msg) => (
+                          <div key={msg.id} className={`flex ${msg.sender_type === 'company' ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`max-w-[80%] rounded-xl px-3 py-2 text-xs ${
+                              msg.sender_type === 'company'
+                                ? 'bg-[#4a6741] text-white'
+                                : 'bg-stone-100 text-stone-800'
+                            }`}>
+                              <p>{msg.message}</p>
+                              <p className={`text-[9px] mt-1 ${msg.sender_type === 'company' ? 'text-green-100' : 'text-stone-400'}`}>
+                                {new Date(msg.created_at + 'Z').toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                          </div>
+                        )))}
+                      <div ref={chatEndRef} />
+                    </div>
+                    <div className="p-3 border-t border-stone-100">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
+                          placeholder="Mensagem para o cliente..."
+                          className="flex-1 px-3 py-2 rounded-lg border border-stone-200 text-xs focus:outline-none focus:ring-1 focus:ring-[#6b8f47]"
+                        />
+                        <button
+                          onClick={sendChatMessage}
+                          disabled={!chatInput.trim()}
+                          className="px-3 py-2 rounded-lg bg-[#4a6741] text-white text-xs font-semibold hover:bg-[#364a25] disabled:opacity-50"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
-import { Shield, CheckCircle, XCircle, Building, Users, Package, Clock } from '../components/Icons';
+import { api } from '../api';
+import { Shield, CheckCircle, XCircle, Building, Users, Package, Clock, MessageSquare, Trash2, Send } from '../components/Icons';
 
 interface Company {
   id: number;
@@ -22,6 +23,16 @@ interface Company {
   created_at: string;
 }
 
+interface User {
+  id: number;
+  name: string;
+  cpf: string;
+  email: string;
+  phone: string;
+  role: string;
+  created_at: string;
+}
+
 interface Stats {
   totalCompanies: number;
   pendingCompanies: number;
@@ -30,14 +41,45 @@ interface Stats {
   totalCollections: number;
 }
 
+interface Conversation {
+  company_id: number;
+  company_name: string;
+  company_email: string;
+  last_message_at: string;
+  unread_count: number;
+}
+
+interface Message {
+  id: number;
+  sender_type: string;
+  sender_id: number;
+  receiver_type: string;
+  receiver_id: number;
+  message: string;
+  is_read: number;
+  created_at: string;
+}
+
+type TabType = 'pending' | 'approved' | 'messages' | 'users';
+
 export default function AdminDashboard() {
-  const { token, role } = useAuth();
+  const { role } = useAuth();
   const navigate = useNavigate();
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('pending');
+  
+  // Messages state
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (role !== 'admin') {
@@ -45,24 +87,33 @@ export default function AdminDashboard() {
       return;
     }
     loadData();
-  }, [role, navigate, token]);
+  }, [role, navigate]);
+
+  useEffect(() => {
+    if (selectedConversation) {
+      loadMessages(selectedConversation);
+    }
+  }, [selectedConversation]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const loadData = async () => {
     try {
-      const [companiesRes, statsRes] = await Promise.all([
-        fetch('/api/admin/companies', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch('/api/admin/stats', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+      const results = await Promise.allSettled([
+        api<{ companies: Company[] }>('/admin/companies'),
+        api<Stats>('/admin/stats'),
+        api<{ users: User[] }>('/admin/users'),
+        api<{ conversations: Conversation[] }>('/messages/conversations'),
       ]);
 
-      const companiesData = await companiesRes.json();
-      const statsData = await statsRes.json();
+      const [companiesData, statsData, usersData, conversationsRes] = results;
 
-      setCompanies(companiesData.companies || []);
-      setStats(statsData);
+      if (companiesData.status === 'fulfilled') setCompanies(companiesData.value.companies || []);
+      if (statsData.status === 'fulfilled') setStats(statsData.value);
+      if (usersData.status === 'fulfilled') setUsers(usersData.value.users || []);
+      if (conversationsRes.status === 'fulfilled') setConversations(conversationsRes.value.conversations || []);
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
     } finally {
@@ -70,24 +121,43 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadMessages = async (companyId: number) => {
+    try {
+      const data = await api<{ messages: Message[] }>(`/messages/company/${companyId}`);
+      setMessages(data.messages || []);
+    } catch (err) {
+      console.error('Erro ao carregar mensagens:', err);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !selectedConversation) return;
+    
+    setSendingMessage(true);
+    try {
+      await api('/messages', {
+        method: 'POST',
+        body: JSON.stringify({ receiverId: selectedConversation, message: newMessage.trim() }),
+      });
+      setNewMessage('');
+      await loadMessages(selectedConversation);
+    } catch (err) {
+      alert('Erro ao enviar mensagem');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   const handleApprove = async (companyId: number) => {
     if (!confirm('Aprovar esta empresa?')) return;
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/admin/companies/${companyId}/approve`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        alert('Empresa aprovada!');
-        loadData();
-        setSelectedCompany(null);
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Erro ao aprovar');
-      }
-    } catch {
-      alert('Erro ao aprovar');
+      await api(`/admin/companies/${companyId}/approve`, { method: 'POST' });
+      alert('Empresa aprovada!');
+      loadData();
+      setSelectedCompany(null);
+    } catch (err: any) {
+      alert(err.message || 'Erro ao aprovar');
     } finally {
       setActionLoading(false);
     }
@@ -97,20 +167,45 @@ export default function AdminDashboard() {
     if (!confirm('Rejeitar e remover esta empresa?')) return;
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/admin/companies/${companyId}/reject`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        alert('Empresa rejeitada');
-        loadData();
-        setSelectedCompany(null);
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Erro ao rejeitar');
+      await api(`/admin/companies/${companyId}/reject`, { method: 'POST' });
+      alert('Empresa rejeitada');
+      loadData();
+      setSelectedCompany(null);
+    } catch (err: any) {
+      alert(err.message || 'Erro ao rejeitar');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteCompany = async (companyId: number, companyName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir a empresa "${companyName}"? Esta ação não pode ser desfeita.`)) return;
+    setActionLoading(true);
+    try {
+      await api(`/admin/companies/${companyId}`, { method: 'DELETE' });
+      alert('Empresa excluída com sucesso');
+      loadData();
+      setSelectedCompany(null);
+      if (selectedConversation === companyId) {
+        setSelectedConversation(null);
+        setMessages([]);
       }
-    } catch {
-      alert('Erro ao rejeitar');
+    } catch (err: any) {
+      alert(err.message || 'Erro ao excluir empresa');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: number, userName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o usuário "${userName}"? Esta ação não pode ser desfeita.`)) return;
+    setActionLoading(true);
+    try {
+      await api(`/admin/users/${userId}`, { method: 'DELETE' });
+      alert('Usuário excluído com sucesso');
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'Erro ao excluir usuário');
     } finally {
       setActionLoading(false);
     }
@@ -121,6 +216,13 @@ export default function AdminDashboard() {
   const pendingCompanies = companies.filter((c) => c.is_approved === 0);
   const approvedCompanies = companies.filter((c) => c.is_approved === 1);
 
+  const tabs: { id: TabType; label: string; icon: React.ReactNode; count?: number }[] = [
+    { id: 'pending', label: 'Pendentes', icon: <Clock className="w-4 h-4" />, count: pendingCompanies.length },
+    { id: 'approved', label: 'Aprovadas', icon: <CheckCircle className="w-4 h-4" />, count: approvedCompanies.length },
+    { id: 'messages', label: 'Mensagens', icon: <MessageSquare className="w-4 h-4" /> },
+    { id: 'users', label: 'Usuários', icon: <Users className="w-4 h-4" />, count: users.filter(u => u.role === 'user').length },
+  ];
+
   return (
     <div className="min-h-screen bg-[#faf8f5]">
       <div className="bg-stone-800 text-white">
@@ -129,7 +231,7 @@ export default function AdminDashboard() {
             <Shield className="w-7 h-7 text-amber-400" />
             <div>
               <h1 className="text-xl font-bold">Painel Admin</h1>
-              <p className="text-stone-400 text-xs">Gerencie empresas e aprovações</p>
+              <p className="text-stone-400 text-xs">Gerencie empresas, mensagens e aprovações</p>
             </div>
           </div>
         </div>
@@ -157,173 +259,391 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-5">
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
-              <div className="p-3.5 border-b border-stone-100 bg-amber-50">
-                <h2 className="font-semibold text-stone-800 text-sm flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-amber-600" />
-                  Aguardando ({pendingCompanies.length})
-                </h2>
-              </div>
-              <div className="divide-y divide-stone-100 max-h-[500px] overflow-y-auto">
-                {pendingCompanies.length === 0 ? (
-                  <div className="p-5 text-center text-stone-400 text-sm">
-                    <CheckCircle className="w-8 h-8 mx-auto text-[#a6bf87] mb-1.5" />
-                    Nenhuma empresa pendente
-                  </div>
-                ) : (
-                  pendingCompanies.map((company) => (
-                    <div
-                      key={company.id}
-                      className={`p-3.5 cursor-pointer hover:bg-stone-50 transition-colors ${
-                        selectedCompany?.id === company.id ? 'bg-amber-50 border-l-2 border-amber-500' : ''
-                      }`}
-                      onClick={() => setSelectedCompany(company)}
-                    >
-                      <p className="font-semibold text-stone-800 text-sm">{company.name}</p>
-                      <p className="text-xs text-stone-500">CNPJ: {company.cnpj}</p>
-                      <p className="text-[11px] text-stone-400 mt-0.5">{company.city} - {company.state}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-stone-800 text-white'
+                  : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+              {tab.count !== undefined && (
+                <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] ${
+                  activeTab === tab.id ? 'bg-stone-600' : 'bg-stone-100'
+                }`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
 
-          <div className="lg:col-span-2">
-            {selectedCompany ? (
-              <div className="bg-white rounded-xl border border-stone-100">
-                <div className="p-5 border-b border-stone-100">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h2 className="text-lg font-bold text-stone-800">{selectedCompany.name}</h2>
-                      <p className="text-sm text-stone-500">{selectedCompany.responsible}</p>
-                    </div>
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${selectedCompany.is_approved ? 'bg-[#e4ecda] text-[#364a25]' : 'bg-amber-100 text-amber-700'}`}>
-                      {selectedCompany.is_approved ? 'Aprovada' : 'Pendente'}
-                    </span>
-                  </div>
+        {/* Pending Companies Tab */}
+        {activeTab === 'pending' && (
+          <div className="grid lg:grid-cols-3 gap-5">
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
+                <div className="p-3.5 border-b border-stone-100 bg-amber-50">
+                  <h2 className="font-semibold text-stone-800 text-sm flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-amber-600" />
+                    Aguardando ({pendingCompanies.length})
+                  </h2>
                 </div>
-
-                <div className="p-5 space-y-4">
-                  <div className="bg-stone-50 rounded-lg p-4">
-                    <h3 className="font-semibold text-stone-800 text-sm mb-2 flex items-center gap-1.5">
-                      <Building className="w-4 h-4 text-blue-600" /> Dados
-                    </h3>
-                    <div className="grid sm:grid-cols-2 gap-3 text-sm">
-                      <div><p className="text-stone-400 text-xs">CNPJ</p><p className="font-medium text-stone-800">{selectedCompany.cnpj}</p></div>
-                      <div><p className="text-stone-400 text-xs">Telefone</p><p className="font-medium text-stone-800">{selectedCompany.phone}</p></div>
-                      <div><p className="text-stone-400 text-xs">E-mail</p><p className="font-medium text-stone-800">{selectedCompany.email}</p></div>
-                      <div><p className="text-stone-400 text-xs">CEP</p><p className="font-medium text-stone-800">{selectedCompany.cep}</p></div>
+                <div className="divide-y divide-stone-100 max-h-[500px] overflow-y-auto">
+                  {pendingCompanies.length === 0 ? (
+                    <div className="p-5 text-center text-stone-400 text-sm">
+                      <CheckCircle className="w-8 h-8 mx-auto text-[#a6bf87] mb-1.5" />
+                      Nenhuma empresa pendente
                     </div>
-                  </div>
-
-                  <div className="bg-stone-50 rounded-lg p-4">
-                    <h3 className="font-semibold text-stone-800 text-sm mb-2">📍 Endereço</h3>
-                    <p className="text-sm text-stone-600">
-                      {selectedCompany.street}, {selectedCompany.number}{selectedCompany.complement ? ` - ${selectedCompany.complement}` : ''}
-                    </p>
-                    <p className="text-sm text-stone-600">
-                      {selectedCompany.neighborhood} - {selectedCompany.city}/{selectedCompany.state}
-                    </p>
-                  </div>
-
-                  <div className="bg-stone-50 rounded-lg p-4">
-                    <h3 className="font-semibold text-stone-800 text-sm mb-2 flex items-center gap-1.5">
-                      <Package className="w-4 h-4 text-[#6b8f47]" /> Materiais
-                    </h3>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedCompany.materials.map((material, idx) => (
-                        <span key={idx} className="px-2.5 py-1 bg-[#e4ecda] text-[#364a25] rounded-full text-xs font-medium">
-                          {material}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {!selectedCompany.is_approved && (
-                    <div className="flex gap-3 pt-3">
-                      <button
-                        onClick={() => handleApprove(selectedCompany.id)}
-                        disabled={actionLoading}
-                        className="flex-1 py-2.5 rounded-lg bg-[#4a6741] text-white font-semibold hover:bg-[#364a25] transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 text-sm"
+                  ) : (
+                    pendingCompanies.map((company) => (
+                      <div
+                        key={company.id}
+                        className={`p-3.5 cursor-pointer hover:bg-stone-50 transition-colors ${
+                          selectedCompany?.id === company.id ? 'bg-amber-50 border-l-2 border-amber-500' : ''
+                        }`}
+                        onClick={() => setSelectedCompany(company)}
                       >
-                        <CheckCircle className="w-4 h-4" />
-                        {actionLoading ? 'Processando...' : 'Aprovar'}
-                      </button>
-                      <button
-                        onClick={() => handleReject(selectedCompany.id)}
-                        disabled={actionLoading}
-                        className="flex-1 py-2.5 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 text-sm"
-                      >
-                        <XCircle className="w-4 h-4" />
-                        {actionLoading ? 'Processando...' : 'Rejeitar'}
-                      </button>
-                    </div>
+                        <p className="font-semibold text-stone-800 text-sm">{company.name}</p>
+                        <p className="text-xs text-stone-500">CNPJ: {company.cnpj}</p>
+                        <p className="text-[11px] text-stone-400 mt-0.5">{company.city} - {company.state}</p>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
-            ) : (
-              <div className="bg-white rounded-xl border border-stone-100 p-10 text-center">
-                <Shield className="w-12 h-12 mx-auto text-stone-300 mb-3" />
-                <h3 className="font-bold text-stone-800">Selecione uma empresa</h3>
-                <p className="text-sm text-stone-400 mt-1">Clique pra ver detalhes e tomar decisão.</p>
-              </div>
-            )}
-          </div>
-        </div>
+            </div>
 
-        <div className="mt-6 bg-white rounded-xl border border-stone-100 overflow-hidden">
-          <div className="p-3.5 border-b border-stone-100 bg-[#f4f7f0]">
-            <h2 className="font-semibold text-stone-800 text-sm flex items-center gap-1.5">
-              <CheckCircle className="w-4 h-4 text-[#6b8f47]" />
-              Aprovadas ({approvedCompanies.length})
-            </h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-stone-50">
-                <tr>
-                  <th className="text-left px-4 py-2.5 font-medium text-stone-500 text-xs">Nome</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-stone-500 text-xs">CNPJ</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-stone-500 text-xs">Cidade</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-stone-500 text-xs">Materiais</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-stone-500 text-xs">Cadastrado</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                {approvedCompanies.map((company) => (
-                  <tr key={company.id} className="hover:bg-stone-50">
-                    <td className="px-4 py-2.5 font-medium text-stone-800">{company.name}</td>
-                    <td className="px-4 py-2.5 text-stone-500">{company.cnpj}</td>
-                    <td className="px-4 py-2.5 text-stone-500">{company.city}/{company.state}</td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex flex-wrap gap-1">
-                        {company.materials.slice(0, 3).map((m, i) => (
-                          <span key={i} className="px-2 py-0.5 bg-[#e4ecda] text-[#364a25] rounded text-[11px] font-medium">{m}</span>
-                        ))}
-                        {company.materials.length > 3 && (
-                          <span className="px-2 py-0.5 bg-stone-100 text-stone-500 rounded text-[11px]">+{company.materials.length - 3}</span>
-                        )}
+            <div className="lg:col-span-2">
+              {selectedCompany ? (
+                <div className="bg-white rounded-xl border border-stone-100">
+                  <div className="p-5 border-b border-stone-100">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h2 className="text-lg font-bold text-stone-800">{selectedCompany.name}</h2>
+                        <p className="text-sm text-stone-500">{selectedCompany.responsible}</p>
                       </div>
-                    </td>
-                    <td className="px-4 py-2.5 text-stone-400 text-xs">
-                      {new Date(company.created_at).toLocaleDateString('pt-BR')}
-                    </td>
-                  </tr>
-                ))}
-                {approvedCompanies.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-stone-400 text-sm">
-                      Nenhuma empresa aprovada ainda
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${selectedCompany.is_approved ? 'bg-[#e4ecda] text-[#364a25]' : 'bg-amber-100 text-amber-700'}`}>
+                          {selectedCompany.is_approved ? 'Aprovada' : 'Pendente'}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteCompany(selectedCompany.id, selectedCompany.name)}
+                          disabled={actionLoading}
+                          className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                          title="Excluir empresa"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-5 space-y-4">
+                    <div className="bg-stone-50 rounded-lg p-4">
+                      <h3 className="font-semibold text-stone-800 text-sm mb-2 flex items-center gap-1.5">
+                        <Building className="w-4 h-4 text-blue-600" /> Dados
+                      </h3>
+                      <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                        <div><p className="text-stone-400 text-xs">CNPJ</p><p className="font-medium text-stone-800">{selectedCompany.cnpj}</p></div>
+                        <div><p className="text-stone-400 text-xs">Telefone</p><p className="font-medium text-stone-800">{selectedCompany.phone}</p></div>
+                        <div><p className="text-stone-400 text-xs">E-mail</p><p className="font-medium text-stone-800">{selectedCompany.email}</p></div>
+                        <div><p className="text-stone-400 text-xs">CEP</p><p className="font-medium text-stone-800">{selectedCompany.cep}</p></div>
+                      </div>
+                    </div>
+
+                    <div className="bg-stone-50 rounded-lg p-4">
+                      <h3 className="font-semibold text-stone-800 text-sm mb-2">📍 Endereço</h3>
+                      <p className="text-sm text-stone-600">
+                        {selectedCompany.street}, {selectedCompany.number}{selectedCompany.complement ? ` - ${selectedCompany.complement}` : ''}
+                      </p>
+                      <p className="text-sm text-stone-600">
+                        {selectedCompany.neighborhood} - {selectedCompany.city}/{selectedCompany.state}
+                      </p>
+                    </div>
+
+                    <div className="bg-stone-50 rounded-lg p-4">
+                      <h3 className="font-semibold text-stone-800 text-sm mb-2 flex items-center gap-1.5">
+                        <Package className="w-4 h-4 text-[#6b8f47]" /> Materiais
+                      </h3>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedCompany.materials.map((material, idx) => (
+                          <span key={idx} className="px-2.5 py-1 bg-[#e4ecda] text-[#364a25] rounded-full text-xs font-medium">
+                            {material}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {!selectedCompany.is_approved && (
+                      <div className="flex gap-3 pt-3">
+                        <button
+                          onClick={() => handleApprove(selectedCompany.id)}
+                          disabled={actionLoading}
+                          className="flex-1 py-2.5 rounded-lg bg-[#4a6741] text-white font-semibold hover:bg-[#364a25] transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 text-sm"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          {actionLoading ? 'Processando...' : 'Aprovar'}
+                        </button>
+                        <button
+                          onClick={() => handleReject(selectedCompany.id)}
+                          disabled={actionLoading}
+                          className="flex-1 py-2.5 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 text-sm"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          {actionLoading ? 'Processando...' : 'Rejeitar'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl border border-stone-100 p-10 text-center">
+                  <Shield className="w-12 h-12 mx-auto text-stone-300 mb-3" />
+                  <h3 className="font-bold text-stone-800">Selecione uma empresa</h3>
+                  <p className="text-sm text-stone-400 mt-1">Clique pra ver detalhes e tomar decisão.</p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Approved Companies Tab */}
+        {activeTab === 'approved' && (
+          <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
+            <div className="p-3.5 border-b border-stone-100 bg-[#f4f7f0]">
+              <h2 className="font-semibold text-stone-800 text-sm flex items-center gap-1.5">
+                <CheckCircle className="w-4 h-4 text-[#6b8f47]" />
+                Aprovadas ({approvedCompanies.length})
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-stone-50">
+                  <tr>
+                    <th className="text-left px-4 py-2.5 font-medium text-stone-500 text-xs">Nome</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-stone-500 text-xs">CNPJ</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-stone-500 text-xs">Cidade</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-stone-500 text-xs">Materiais</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-stone-500 text-xs">Cadastrado</th>
+                    <th className="text-right px-4 py-2.5 font-medium text-stone-500 text-xs">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {approvedCompanies.map((company) => (
+                    <tr key={company.id} className="hover:bg-stone-50">
+                      <td className="px-4 py-2.5 font-medium text-stone-800">{company.name}</td>
+                      <td className="px-4 py-2.5 text-stone-500">{company.cnpj}</td>
+                      <td className="px-4 py-2.5 text-stone-500">{company.city}/{company.state}</td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex flex-wrap gap-1">
+                          {company.materials.slice(0, 3).map((m, i) => (
+                            <span key={i} className="px-2 py-0.5 bg-[#e4ecda] text-[#364a25] rounded text-[11px] font-medium">{m}</span>
+                          ))}
+                          {company.materials.length > 3 && (
+                            <span className="px-2 py-0.5 bg-stone-100 text-stone-500 rounded text-[11px]">+{company.materials.length - 3}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-stone-400 text-xs">
+                        {new Date(company.created_at).toLocaleDateString('pt-BR')}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <button
+                          onClick={() => handleDeleteCompany(company.id, company.name)}
+                          disabled={actionLoading}
+                          className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                          title="Excluir empresa"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {approvedCompanies.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-center text-stone-400 text-sm">
+                        Nenhuma empresa aprovada ainda
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Messages Tab */}
+        {activeTab === 'messages' && (
+          <div className="grid lg:grid-cols-3 gap-5">
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
+                <div className="p-3.5 border-b border-stone-100 bg-blue-50">
+                  <h2 className="font-semibold text-stone-800 text-sm flex items-center gap-1.5">
+                    <MessageSquare className="w-4 h-4 text-blue-600" />
+                    Conversas ({conversations.length})
+                  </h2>
+                </div>
+                <div className="divide-y divide-stone-100 max-h-[500px] overflow-y-auto">
+                  {conversations.length === 0 ? (
+                    <div className="p-5 text-center text-stone-400 text-sm">
+                      <MessageSquare className="w-8 h-8 mx-auto text-stone-300 mb-1.5" />
+                      Nenhuma conversa ainda
+                    </div>
+                  ) : (
+                    conversations.map((conv) => (
+                      <div
+                        key={conv.company_id}
+                        className={`p-3.5 cursor-pointer hover:bg-stone-50 transition-colors ${
+                          selectedConversation === conv.company_id ? 'bg-blue-50 border-l-2 border-blue-500' : ''
+                        }`}
+                        onClick={() => setSelectedConversation(conv.company_id)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-semibold text-stone-800 text-sm">{conv.company_name}</p>
+                            <p className="text-[11px] text-stone-400">
+                              {new Date(conv.last_message_at + 'Z').toLocaleString('pt-BR')}
+                            </p>
+                          </div>
+                          {conv.unread_count > 0 && (
+                            <span className="px-2 py-0.5 bg-blue-500 text-white rounded-full text-[10px] font-bold">
+                              {conv.unread_count}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-2">
+              {selectedConversation ? (
+                <div className="bg-white rounded-xl border border-stone-100 flex flex-col h-[600px]">
+                  <div className="p-4 border-b border-stone-100">
+                    <h3 className="font-bold text-stone-800">
+                      {conversations.find(c => c.company_id === selectedConversation)?.company_name}
+                    </h3>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`flex ${msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-[70%] rounded-xl p-3 ${
+                            msg.sender_type === 'admin'
+                              ? 'bg-[#4a6741] text-white'
+                              : 'bg-stone-100 text-stone-800'
+                          }`}
+                        >
+                          <p className="text-sm">{msg.message}</p>
+                          <p className={`text-[10px] mt-1 ${msg.sender_type === 'admin' ? 'text-green-100' : 'text-stone-400'}`}>
+                            {new Date(msg.created_at + 'Z').toLocaleString('pt-BR')}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
+
+                  <div className="p-4 border-t border-stone-100">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                        placeholder="Digite sua mensagem..."
+                        className="flex-1 px-4 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#4a6741] focus:border-transparent"
+                        disabled={sendingMessage}
+                      />
+                      <button
+                        onClick={handleSendMessage}
+                        disabled={!newMessage.trim() || sendingMessage}
+                        className="px-4 py-2.5 rounded-xl bg-[#4a6741] text-white font-semibold hover:bg-[#364a25] transition-colors disabled:opacity-50 flex items-center gap-2"
+                      >
+                        <Send className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl border border-stone-100 p-10 text-center">
+                  <MessageSquare className="w-12 h-12 mx-auto text-stone-300 mb-3" />
+                  <h3 className="font-bold text-stone-800">Selecione uma conversa</h3>
+                  <p className="text-sm text-stone-400 mt-1">Escolha uma empresa para enviar mensagens.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
+            <div className="p-3.5 border-b border-stone-100 bg-purple-50">
+              <h2 className="font-semibold text-stone-800 text-sm flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-purple-600" />
+                Usuários ({users.filter(u => u.role === 'user').length})
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-stone-50">
+                  <tr>
+                    <th className="text-left px-4 py-2.5 font-medium text-stone-500 text-xs">Nome</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-stone-500 text-xs">E-mail</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-stone-500 text-xs">Telefone</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-stone-500 text-xs">CPF</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-stone-500 text-xs">Cadastrado</th>
+                    <th className="text-right px-4 py-2.5 font-medium text-stone-500 text-xs">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {users.filter(u => u.role === 'user').map((user) => (
+                    <tr key={user.id} className="hover:bg-stone-50">
+                      <td className="px-4 py-2.5 font-medium text-stone-800">{user.name}</td>
+                      <td className="px-4 py-2.5 text-stone-500">{user.email}</td>
+                      <td className="px-4 py-2.5 text-stone-500">{user.phone}</td>
+                      <td className="px-4 py-2.5 text-stone-500">{user.cpf}</td>
+                      <td className="px-4 py-2.5 text-stone-400 text-xs">
+                        {new Date(user.created_at).toLocaleDateString('pt-BR')}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <button
+                          onClick={() => handleDeleteUser(user.id, user.name)}
+                          disabled={actionLoading}
+                          className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                          title="Excluir usuário"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {users.filter(u => u.role === 'user').length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-center text-stone-400 text-sm">
+                        Nenhum usuário cadastrado
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

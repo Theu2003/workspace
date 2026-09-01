@@ -18,7 +18,6 @@ import CompanyProfile from './pages/CompanyProfile';
 import CompanyPending from './pages/CompanyPending';
 import UserProfile from './pages/UserProfile';
 import Notifications from './pages/Notifications';
-import RecyclingInfo from './pages/RecyclingInfo';
 import ForgotPassword from './pages/ForgotPassword';
 import AdminDashboard from './pages/AdminDashboard';
 
@@ -45,7 +44,6 @@ export default function App() {
           <Route path="/cadastro/empresa" element={<RegisterCompany />} />
           <Route path="/cadastro/usuario" element={<RegisterUser />} />
           <Route path="/esqueci-senha" element={<ForgotPassword />} />
-          <Route path="/informacoes" element={<RecyclingInfo />} />
           <Route path="/perfil" element={<RequireAuth role="user"><UserProfile /></RequireAuth>} />
           <Route path="/dashboard" element={<RequireAuth role="user"><UserDashboard /></RequireAuth>} />
           <Route path="/agendar-coleta" element={<RequireAuth role="user"><ScheduleCollection /></RequireAuth>} />

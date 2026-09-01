@@ -118,4 +118,64 @@ router.get('/stats', (_req, res) => {
   }
 });
 
+// Get all users (admin only)
+router.get('/users', (_req, res) => {
+  try {
+    const users = db.prepare(
+      `SELECT id, name, cpf, email, phone, role, created_at FROM users ORDER BY created_at DESC`
+    ).all();
+    res.json({ users });
+  } catch (err) {
+    console.error('Erro ao listar usuários:', err);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Delete a company (admin only)
+router.delete('/companies/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const company = db.prepare('SELECT id, name FROM companies WHERE id = ?').get(id);
+    if (!company) return res.status(404).json({ error: 'Empresa não encontrada' });
+
+    // Delete related notifications
+    db.prepare('DELETE FROM notifications WHERE company_id = ?').run(id);
+    // Delete related messages
+    db.prepare("DELETE FROM messages WHERE (sender_type = 'company' AND sender_id = ?) OR (receiver_type = 'company' AND receiver_id = ?)").run(id, id);
+    // Delete the company
+    db.prepare('DELETE FROM companies WHERE id = ?').run(id);
+
+    res.json({ message: 'Empresa removida com sucesso' });
+  } catch (err) {
+    console.error('Erro ao deletar empresa:', err);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Delete a user (admin only)
+router.delete('/users/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = db.prepare('SELECT id, name, role FROM users WHERE id = ?').get(id);
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+    // Don't allow deleting admin users
+    if (user.role === 'admin') {
+      return res.status(403).json({ error: 'Não é possível excluir administradores' });
+    }
+
+    // Delete related notifications
+    db.prepare('DELETE FROM notifications WHERE user_id = ?').run(id);
+    // Delete related addresses (cascade should handle this, but be explicit)
+    db.prepare('DELETE FROM addresses WHERE user_id = ?').run(id);
+    // Delete the user
+    db.prepare('DELETE FROM users WHERE id = ?').run(id);
+
+    res.json({ message: 'Usuário removido com sucesso' });
+  } catch (err) {
+    console.error('Erro ao deletar usuário:', err);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
 export default router;

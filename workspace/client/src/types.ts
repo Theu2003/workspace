@@ -59,6 +59,8 @@ export interface Collection {
   address: Address & { label?: string };
   latitude: number | null;
   longitude: number | null;
+  company_latitude: number | null;
+  company_longitude: number | null;
   date: string;
   period: string;
   observations: string;
