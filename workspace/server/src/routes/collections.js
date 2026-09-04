@@ -115,10 +115,14 @@ router.get('/', requireRole('company'), (req, res) => {
   const conditions = [];
   const params = [];
 
-  // Filtro por cidade: empresa só vê solicitações da sua cidade
+  // Empresa só vê: suas próprias coletas + pendentes da mesma cidade que ninguém aceitou ainda
+  conditions.push('(c.company_id = ? OR (c.status = ? AND c.company_id IS NULL)');
+  params.push(req.auth.id, 'pendente');
   if (company.city) {
-    conditions.push('JSON_EXTRACT(c.address, "$.city") = ?');
+    conditions.push('JSON_EXTRACT(c.address, "$.city") = ?)');
     params.push(company.city);
+  } else {
+    conditions.push('1=1)');
   }
 
   if (status) {
@@ -167,24 +171,15 @@ router.get('/dashboard', requireRole('company'), (req, res) => {
   const company = db.prepare('SELECT is_approved, city FROM companies WHERE id = ?').get(req.auth.id);
   if (!company?.is_approved) return res.status(403).json({ error: 'Empresa ainda não aprovada pelo administrador' });
 
-  // Empresa só vê: suas próprias coletas + pendentes da mesma cidade
-  const rows = company.city
-    ? db.prepare(
-        `SELECT ${USER_COLLECTION_COLUMNS}
-         FROM collections c
-         LEFT JOIN users u ON u.id = c.user_id
-         LEFT JOIN companies co ON co.id = c.company_id
-         WHERE c.company_id = ? OR (c.status = 'pendente' AND JSON_EXTRACT(c.address, '$.city') = ?)
-         ORDER BY c.created_at DESC`
-      ).all(req.auth.id, company.city)
-    : db.prepare(
-        `SELECT ${USER_COLLECTION_COLUMNS}
-         FROM collections c
-         LEFT JOIN users u ON u.id = c.user_id
-         LEFT JOIN companies co ON co.id = c.company_id
-         WHERE c.company_id = ? OR (c.status = 'pendente')
-         ORDER BY c.created_at DESC`
-      ).all(req.auth.id);
+  // Empresa só vê suas próprias coletas no dashboard
+  const rows = db.prepare(
+      `SELECT ${USER_COLLECTION_COLUMNS}
+       FROM collections c
+       LEFT JOIN users u ON u.id = c.user_id
+       LEFT JOIN companies co ON co.id = c.company_id
+       WHERE c.company_id = ?
+       ORDER BY c.created_at DESC`
+    ).all(req.auth.id);
 
   const total = rows.length;
   const byStatus = { pendente: 0, agendada: 0, aceita: 0, em_coleta: 0, concluida: 0, cancelada: 0, recusada: 0 };
