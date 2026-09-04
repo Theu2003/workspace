@@ -4,3 +4,122 @@
 cd workspace
 npm run dev
 
+# 🚀 Como Ligar o Servidor
+
+## Pré-requisitos
+- Node.js instalado
+- npm instalado
+- `cloudflared` instalado (para acesso pela internet)
+  ```bash
+  npm install -g cloudflared
+  ```
+
+---
+
+## 📡 Modo 1: Acessar pela mesma rede Wi-Fi
+
+> Funciona quando o celular/computador está conectado ao **mesmo Wi-Fi** do PC.
+
+### 1. Abrir o terminal e navegar até a pasta do projeto
+```bash
+cd workspace
+```
+
+### 2. Iniciar o servidor (API) - Porta 3001
+```bash
+cd server && npm run dev
+```
+> Aguarde a mensagem: "ReciclaJá API rodando na porta 3001"
+
+### 3. Abrir um NOVO terminal e iniciar o cliente (Vite)
+```bash
+cd client && npm run dev
+```
+> Aguarde a mensagem mostrando a URL (ex: http://192.168.x.x:5173)
+
+### 4. Acessar pelo celular
+Abra o navegador do celular e digite a URL que apareceu no terminal do Vite.
+
+Encontre o IP da sua máquina:
+```bash
+# Windows
+ipconfig
+# Procure "Endereço IPv4" na seção Wi-Fi ou Ethernet
+```
+
+Exemplo:
+```
+http://192.168.2.104:5173
+```
+
+---
+
+## 🌐 Modo 2: Acessar pela internet (outra rede WiFi)
+
+> Funciona de **qualquer lugar** — celular com dados, casa de amigo, etc.
+> Usa o **Cloudflare Tunnel** para criar um link público temporário.
+
+### 1. Iniciar o servidor (API) - Porta 3001
+```bash
+cd workspace/server && npm run dev
+```
+
+### 2. Iniciar o cliente (Vite) - Porta 5173
+```bash
+cd workspace/client && npm run dev
+```
+
+### 3. Criar o túnel para o frontend (app completo)
+Abra um **terceiro terminal** e execute:
+```bash
+cloudflared tunnel --url http://localhost:5173
+```
+
+Aguarde até ver algo como:
+```
+|  Your quick Tunnel has been created! Visit it at:                                 |
+|  https://xxx-yyy-zzz.trycloudflare.com                                            |
+```
+
+> ⚠️ Esse link é **temporário** — funciona enquanto o cloudflared estiver rodando.
+> Na primeira vez pode demorar alguns segundos para conectar.
+
+### 4. Acessar de qualquer lugar
+Copie o link `https://xxx-yyy-zzz.trycloudflare.com` e abra no navegador de qualquer dispositivo.
+
+### (Opcional) Criar túnel só para a API
+Se precisar acessar a API diretamente (ex: para testes):
+```bash
+cloudflared tunnel --url http://localhost:3001
+```
+
+---
+
+## 🛑 Como parar tudo
+
+| O que parar | Comando |
+|-------------|---------|
+| Servidor (API) | `Ctrl + C` no terminal do server |
+| Cliente (Vite) | `Ctrl + C` no terminal do client |
+| Túnel (cloudflared) | `Ctrl + C` no terminal do cloudflared |
+
+Para parar **todos** os processos Node de uma vez:
+```bash
+taskkill //F //IM node.exe
+```
+
+---
+
+## 📋 Resumo rápido
+
+| Modo | Portas | Link de exemplo |
+|------|--------|------------------|
+| Mesma rede WiFi | 5173 + 3001 | `http://192.168.2.104:5173` |
+| Internet (cloudflared) | 5173 + 3001 | `https://xxx-yyy.trycloudflare.com` |
+
+---
+
+## ⚠️ Observações
+- O número da porta do Vite pode mudar (5173, 5174, 5175...) se já houver outro processo usando essa porta. Sempre olhe no terminal.
+- O link do Cloudflare Tunnel é **temporário** — se você fechar o terminal, o link morre e um novo será criado na próxima vez.
+- Para uso em produção (permanente), configure um domínio próprio com Cloudflare Tunnel nomeado.

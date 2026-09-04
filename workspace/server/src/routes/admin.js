@@ -1,15 +1,42 @@
-import { Router } from 'express';
-import db from '../db.js';
-import { authMiddleware, requireRole } from '../auth.js';
+// ===================================================================
+// routes/admin.js — Rotas do painel administrativo
+// ===================================================================
+// Este arquivo define as rotas que só o administrador pode acessar.
+// Gerencia empresas (aprovar, rejeitar, excluir) e usuários.
+//
+// Todas as rotas requerem autenticação + papel 'admin'.
+//
+// Rotas:
+//   GET    /companies           → Lista todas as empresas
+//   GET    /companies/pending   → Lista empresas pendentes de aprovação
+//   POST   /companies/:id/approve → Aprova uma empresa
+//   POST   /companies/:id/reject  → Rejeita e remove uma empresa
+//   DELETE /companies/:id       → Remove uma empresa
+//   GET    /users               → Lista todos os usuários
+//   DELETE /users/:id           → Remove um usuário
+//   GET    /stats               → Estatísticas do admin
+// ===================================================================
+
+import { Router } from 'express';      // Router do Express
+import db from '../db.js';              // Banco de dados
+import { authMiddleware, requireRole } from '../auth.js'; // Middlewares de auth
 
 const router = Router();
 
-// All admin routes require authentication + admin role
+// Proteção: TODAS as rotas deste arquivo requerem:
+//   1. Autenticação (authMiddleware) → usuário deve estar logado
+//   2. Papel admin (requireRole('admin')) → só administradores
 router.use(authMiddleware, requireRole('admin'));
 
-// List all companies (with approval status)
+// ── Rota: Listar todas as empresas ──────────────────────────────────
+// GET /api/admin/companies
+// Retorna a lista completa de empresas (aprovadas e pendentes)
+//
+// Retorna:
+//   200: { companies: [...] }
 router.get('/companies', (_req, res) => {
   try {
+    // Busca todas as empresas, ordenadas por data de criação (mais recente primeiro)
     const companies = db.prepare(`
       SELECT id, name, cnpj, responsible, email, phone, cep, state, city, 
              neighborhood, street, number, complement, materials, 
@@ -18,7 +45,7 @@ router.get('/companies', (_req, res) => {
       ORDER BY created_at DESC
     `).all();
 
-    // Parse materials JSON
+    // Converte o JSON de materials string → array
     const parsed = companies.map((c) => ({
       ...c,
       materials: (() => {
@@ -33,7 +60,12 @@ router.get('/companies', (_req, res) => {
   }
 });
 
-// Get pending companies only
+// ── Rota: Listar empresas pendentes ─────────────────────────────────
+// GET /api/admin/companies/pending
+// Retorna apenas empresas com is_approved = 0 (aguardando aprovação)
+//
+// Retorna:
+//   200: { companies: [...] }
 router.get('/companies/pending', (_req, res) => {
   try {
     const companies = db.prepare(`
@@ -59,16 +91,27 @@ router.get('/companies/pending', (_req, res) => {
   }
 });
 
-// Approve a company
+// ── Rota: Aprovar empresa ───────────────────────────────────────────
+// POST /api/admin/companies/:id/approve
+// Aprova uma empresa (muda is_approved de 0 para 1)
+//
+// Params: id (ID da empresa)
+//
+// Efeito colateral: Notifica a empresa que foi aprovada
+//
+// Retorna:
+//   200: { message: 'Empresa aprovada com sucesso' }
+//   404: Empresa não encontrada
 router.post('/companies/:id/approve', (req, res) => {
   try {
     const { id } = req.params;
     const company = db.prepare('SELECT id, name, email FROM companies WHERE id = ?').get(id);
     if (!company) return res.status(404).json({ error: 'Empresa não encontrada' });
 
+    // Muda o status para aprovada
     db.prepare('UPDATE companies SET is_approved = 1 WHERE id = ?').run(id);
 
-    // Notify the company
+    // Notifica a empresa sobre a aprovação
     db.prepare(
       `INSERT INTO notifications (user_id, company_id, type, message) VALUES (NULL, ?, ?, ?)`
     ).run(id, 'aprovacao', `Parabéns! Sua empresa "${company.name}" foi aprovada e já está ativa na plataforma.`);
@@ -80,13 +123,22 @@ router.post('/companies/:id/approve', (req, res) => {
   }
 });
 
-// Reject a company (deletes the company)
+// ── Rota: Rejeitar empresa ──────────────────────────────────────────
+// POST /api/admin/companies/:id/reject
+// Rejeita e remove uma empresa do sistema
+//
+// Params: id (ID da empresa)
+//
+// Retorna:
+//   200: { message: 'Empresa rejeitada e removida' }
+//   404: Empresa não encontrada
 router.post('/companies/:id/reject', (req, res) => {
   try {
     const { id } = req.params;
     const company = db.prepare('SELECT id, name FROM companies WHERE id = ?').get(id);
     if (!company) return res.status(404).json({ error: 'Empresa não encontrada' });
 
+    // Deleta a empresa
     db.prepare('DELETE FROM companies WHERE id = ?').run(id);
 
     res.json({ message: 'Empresa rejeitada e removida' });
@@ -96,21 +148,31 @@ router.post('/companies/:id/reject', (req, res) => {
   }
 });
 
-// Get admin stats
+// ── Rota: Estatísticas do admin ─────────────────────────────────────
+// GET /api/admin/stats
+// Retorna estatísticas gerais para o dashboard do administrador
+//
+// Retorna:
+//   200: { totalCompanies, pendingCompanies, approvedCompanies, totalUsers, totalCollections }
 router.get('/stats', (_req, res) => {
   try {
+    // Conta empresas por status
     const totalCompanies = db.prepare('SELECT COUNT(*) as count FROM companies').get()?.count || 0;
     const pendingCompanies = db.prepare('SELECT COUNT(*) as count FROM companies WHERE is_approved = 0').get()?.count || 0;
     const approvedCompanies = db.prepare('SELECT COUNT(*) as count FROM companies WHERE is_approved = 1').get()?.count || 0;
+
+    // Conta usuários comuns (excluindo admins)
     const totalUsers = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'user'").get()?.count || 0;
+
+    // Conta total de coletas
     const totalCollections = db.prepare('SELECT COUNT(*) as count FROM collections').get()?.count || 0;
 
     res.json({
-      totalCompanies,
-      pendingCompanies,
-      approvedCompanies,
-      totalUsers,
-      totalCollections,
+      totalCompanies,      // Total de empresas
+      pendingCompanies,    // Empresas pendentes de aprovação
+      approvedCompanies,   // Empresas aprovadas
+      totalUsers,          // Total de usuários
+      totalCollections,    // Total de coletas
     });
   } catch (err) {
     console.error('Erro ao buscar stats do admin:', err);
@@ -118,7 +180,12 @@ router.get('/stats', (_req, res) => {
   }
 });
 
-// Get all users (admin only)
+// ── Rota: Listar todos os usuários ──────────────────────────────────
+// GET /api/admin/users
+// Retorna a lista de todos os usuários cadastrados
+//
+// Retorna:
+//   200: { users: [...] }
 router.get('/users', (_req, res) => {
   try {
     const users = db.prepare(
@@ -131,18 +198,30 @@ router.get('/users', (_req, res) => {
   }
 });
 
-// Delete a company (admin only)
+// ── Rota: Deletar empresa ───────────────────────────────────────────
+// DELETE /api/admin/companies/:id
+// Remove uma empresa e todos os seus dados relacionados
+//
+// Antes de deletar, remove:
+//   - Notificações da empresa
+//   - Mensagens da empresa
+//
+// Params: id (ID da empresa)
+//
+// Retorna:
+//   200: { message: 'Empresa removida com sucesso' }
+//   404: Empresa não encontrada
 router.delete('/companies/:id', (req, res) => {
   try {
     const { id } = req.params;
     const company = db.prepare('SELECT id, name FROM companies WHERE id = ?').get(id);
     if (!company) return res.status(404).json({ error: 'Empresa não encontrada' });
 
-    // Delete related notifications
+    // Remove dados relacionados antes de deletar a empresa
     db.prepare('DELETE FROM notifications WHERE company_id = ?').run(id);
-    // Delete related messages
     db.prepare("DELETE FROM messages WHERE (sender_type = 'company' AND sender_id = ?) OR (receiver_type = 'company' AND receiver_id = ?)").run(id, id);
-    // Delete the company
+
+    // Deleta a empresa
     db.prepare('DELETE FROM companies WHERE id = ?').run(id);
 
     res.json({ message: 'Empresa removida com sucesso' });
@@ -152,23 +231,38 @@ router.delete('/companies/:id', (req, res) => {
   }
 });
 
-// Delete a user (admin only)
+// ── Rota: Deletar usuário ───────────────────────────────────────────
+// DELETE /api/admin/users/:id
+// Remove um usuário e todos os seus dados relacionados
+//
+// NÃO permite deletar usuários admin
+//
+// Antes de deletar, remove:
+//   - Notificações do usuário
+//   - Endereços do usuário
+//
+// Params: id (ID do usuário)
+//
+// Retorna:
+//   200: { message: 'Usuário removido com sucesso' }
+//   403: Tentativa de deletar admin
+//   404: Usuário não encontrado
 router.delete('/users/:id', (req, res) => {
   try {
     const { id } = req.params;
     const user = db.prepare('SELECT id, name, role FROM users WHERE id = ?').get(id);
     if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
 
-    // Don't allow deleting admin users
+    // Proteção: não permite deletar administradores
     if (user.role === 'admin') {
       return res.status(403).json({ error: 'Não é possível excluir administradores' });
     }
 
-    // Delete related notifications
+    // Remove dados relacionados antes de deletar o usuário
     db.prepare('DELETE FROM notifications WHERE user_id = ?').run(id);
-    // Delete related addresses (cascade should handle this, but be explicit)
     db.prepare('DELETE FROM addresses WHERE user_id = ?').run(id);
-    // Delete the user
+
+    // Deleta o usuário
     db.prepare('DELETE FROM users WHERE id = ?').run(id);
 
     res.json({ message: 'Usuário removido com sucesso' });

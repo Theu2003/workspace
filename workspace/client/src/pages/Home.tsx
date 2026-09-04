@@ -7,7 +7,7 @@ const steps = [
   { num: '1', icon: <Users className="w-5 h-5" />, title: 'Crie sua conta', desc: 'Cadastre-se de graça, rápido e sem complicação.' },
   { num: '2', icon: <Recycle className="w-5 h-5" />, title: 'Informe seus materiais', desc: 'Diga o que você tem e a quantidade aproximada.' },
   { num: '3', icon: <MapPin className="w-5 h-5" />, title: 'Confirme o endereço', desc: 'Marque onde a coleta vai acontecer.' },
-  { num: '4', icon: <Calendar className="w-5 h-5" />, title: 'Escolha o dia', desc: 'Picked the best time for you.' },
+  { num: '4', icon: <Calendar className="w-5 h-5" />, title: 'Escolha o dia', desc: 'Selecione o melhor horário pra você.' },
   { num: '5', icon: <CheckCircle className="w-5 h-5" />, title: 'Empresa aceita', desc: 'Uma coletora pega a solicitação e confirma.' },
   { num: '6', icon: <Leaf className="w-5 h-5" />, title: 'Acompanhe e recicle', desc: 'Veja tudo em tempo real e ajude o planeta.' }
 ];
