@@ -16,6 +16,7 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -23,6 +24,54 @@ body {
   background-color: #faf8f5;
   color: #374151;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Sem destaque azul ao tocar em links/botões no celular */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Evita zoom automático do iOS em inputs com fonte < 16px */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 1rem !important;
+  }
+}
+
+/* ── Utilitários de responsividade ─────────────────────────── */
+
+/* Esconde a barra de rolagem (filtros e abas deslizáveis) */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Animação suave do menu mobile da Navbar */
+@keyframes menuPop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.menu-pop {
+  animation: menuPop 0.18s ease-out;
+}
+
+/* Feedback de toque nos cartões (só em telas de toque) */
+@media (hover: none) {
+  .tap-scale:active {
+    transform: scale(0.98);
+  }
 }
 
 .leaflet-container {
@@ -30,4 +79,46 @@ body {
   height: 100%;
   border-radius: 0.5rem;
   z-index: 0;
+}
+
+/* ── Mapa de Coletas (tela cheia) ────────────────────────────── */
+/* Remove cantos arredondados quando o mapa ocupa a tela toda */
+.map-bleed .leaflet-container {
+  border-radius: 0;
+}
+
+/* Marcador selecionado: leve destaque sobre os demais */
+.pin-selected {
+  filter: drop-shadow(0 3px 6px rgb(0 0 0 / 0.35));
+  z-index: 1000;
+}
+
+/* Popup moderno: branco, arredondado, sem margens internas */
+.map-popup .leaflet-popup-content-wrapper {
+  border-radius: 0.85rem;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
+  padding: 2px;
+}
+.map-popup .leaflet-popup-content {
+  margin: 6px 10px;
+  line-height: 1.35;
+}
+.map-popup .leaflet-popup-tip {
+  box-shadow: 0 3px 10px rgb(0 0 0 / 0.12);
+}
+
+/* Scrollbar discreta para a lista lateral */
+.nice-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #d6d3d1 transparent;
+}
+.nice-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.nice-scroll::-webkit-scrollbar-thumb {
+  background: #d6d3d1;
+  border-radius: 8px;
+}
+.nice-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }

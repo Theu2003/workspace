@@ -1,0 +1,43 @@
+// ===================================================================
+// vite.config.js — Configuração do Vite (bundler/dev server)
+// ===================================================================
+// Define:
+//   1. Plugins: React (JSX) e Tailwind CSS 4
+//   2. Servidor de desenvolvimento:
+//      - host: true → acessível na rede local (ex: celular no mesmo Wi-Fi)
+//      - allowedHosts → hosts permitidos para túneis (Cloudflare, etc.)
+//      - proxy → repassa chamadas /api para o backend na porta 3001
+// ===================================================================
+
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  // JSX vive em arquivos .js — dizemos ao esbuild para tratá-los como JSX
+  esbuild: {
+    loader: 'jsx',
+    include: /src\/.*\.js$/,
+    exclude: /node_modules/
+  },
+  // Scanner de dependências (dev) também precisa entender JSX em .js
+  optimizeDeps: {
+    esbuildOptions: {
+      loader: {
+        '.js': 'jsx'
+      }
+    }
+  },
+  server: {
+    allowedHosts: ['.monkeycode-ai.live', '.trycloudflare.com'],
+    host: true,
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true
+      }
+    }
+  }
+})

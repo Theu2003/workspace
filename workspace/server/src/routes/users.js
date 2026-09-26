@@ -131,10 +131,15 @@ router.put('/addresses/:id', requireRole('user'), async (req, res) => {
   const addr = db.prepare('SELECT * FROM addresses WHERE id = ? AND user_id = ?').get(req.params.id, req.auth.id);
   if (!addr) return res.status(404).json({ error: 'Endereço não encontrado' });
 
-  const { label, cep, state, city, neighborhood, street, number, complement } = req.body;
+  const { label, cep, state, city, neighborhood, street, number, complement, latitude, longitude } = req.body;
 
-  // Recalcula as coordenadas geográficas
-  const coords = await geocode({ street, number, neighborhood, city, state, cep });
+  // Coordenadas manuais (escolhidas no mapa interativo) têm prioridade sobre
+  // o geocoding automático. Envia latitude/longitude para preservar o ponto;
+  // omita-os para o servidor recalcular via Nominatim.
+  const hasManualCoords = latitude != null && longitude != null && latitude !== '' && longitude !== '';
+  const coords = hasManualCoords
+    ? { latitude: Number(latitude), longitude: Number(longitude) }
+    : await geocode({ street, number, neighborhood, city, state, cep });
 
   // Atualiza todos os campos do endereço
   db.prepare(
