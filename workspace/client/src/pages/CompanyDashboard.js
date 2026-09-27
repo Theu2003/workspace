@@ -61,7 +61,7 @@ export default function CompanyDashboard() {
     <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-7">
         <div>
-          <h1 className="text-2xl font-extrabold text-stone-800">{company?.name}</h1>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-stone-800 break-words">{company?.name}</h1>
           <p className="mt-0.5 text-sm text-stone-500">Visão geral das coletas da sua empresa.{userCity && <> Coletas em <strong className="text-stone-700">{userCity}</strong>.</>}</p>
         </div>
         <div>
@@ -75,14 +75,14 @@ export default function CompanyDashboard() {
         <p className="text-stone-400 text-sm">Carregando...</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
             {cards.map((c) => (
-              <div key={c.label} className={`rounded-xl border p-4 ${c.color}`}>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center">{c.icon}</div>
-                  <span className="text-xl font-extrabold">{c.value}</span>
+              <div key={c.label} className={`rounded-xl border p-3 sm:p-4 ${c.color}`}>
+                <div className="flex items-center justify-center sm:justify-start gap-2 sm:gap-2.5">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white flex items-center justify-center">{c.icon}</div>
+                  <span className="text-lg sm:text-xl font-extrabold">{c.value}</span>
                 </div>
-                <p className="mt-1.5 text-xs font-medium text-stone-500">{c.label}</p>
+                <p className="mt-1 sm:mt-1.5 text-[11px] sm:text-xs font-medium text-stone-500 text-center sm:text-left leading-tight">{c.label}</p>
               </div>
             ))}
           </div>
@@ -113,24 +113,27 @@ export default function CompanyDashboard() {
               )}
             </div>
 
-            <div className="bg-white rounded-xl border border-stone-100 p-5">
+            <div className="bg-white rounded-xl border border-stone-100 p-4 sm:p-5">
               <h2 className="font-bold text-stone-800 mb-4 text-sm">Coletas por data</h2>
               {dateEntries.length === 0 ? (
                 <p className="text-xs text-stone-400">Nenhuma coleta agendada.</p>
               ) : (
-                <div className="flex items-end gap-2 h-44">
-                  {dateEntries.map(([date, count]) => (
-                    <div key={date} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
-                      <span className="text-[10px] font-bold text-stone-500">{count}</span>
-                      <div
-                        className="w-full max-w-[40px] rounded-t bg-[#84a55e]"
-                        style={{ height: `${Math.max(8, (count / maxDate) * 72)}%` }}
-                      />
-                      <span className="text-[10px] text-stone-400 whitespace-nowrap">
-                        {new Date(`${date}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                      </span>
-                    </div>
-                  ))}
+                /* Scroll horizontal no celular: barras não ficam espremidas com muitas datas */
+                <div className="overflow-x-auto no-scrollbar -mx-1 px-1">
+                  <div className="flex items-end gap-2 h-44 min-w-full w-max">
+                    {dateEntries.map(([date, count]) => (
+                      <div key={date} className="w-10 sm:flex-1 sm:w-auto flex flex-col items-center justify-end h-full gap-1">
+                        <span className="text-[10px] font-bold text-stone-500">{count}</span>
+                        <div
+                          className="w-full max-w-[40px] rounded-t bg-[#84a55e]"
+                          style={{ height: `${Math.max(8, (count / maxDate) * 72)}%` }}
+                        />
+                        <span className="text-[10px] text-stone-400 whitespace-nowrap">
+                          {new Date(`${date}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -157,20 +160,21 @@ export default function CompanyDashboard() {
             ) : (
               <div className="space-y-2">
                 {collections.slice(0, 8).map((c) => (
-                  <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-stone-50 hover:bg-stone-100 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#f4f7f0] text-[#537236] flex items-center justify-center">
+                  /* Empilhado no celular (evita quebra feia de linha); em linha no desktop */
+                  <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg bg-stone-50 hover:bg-stone-100 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 shrink-0 rounded-lg bg-[#f4f7f0] text-[#537236] flex items-center justify-center">
                         <Recycle className="w-4 h-4" />
                       </div>
-                      <div>
-                        <p className="font-semibold text-stone-800 text-sm">{c.user_name}</p>
-                        <p className="text-[11px] text-stone-400 flex items-center gap-1">
-                          <MapPin className="w-3 h-3" /> {c.address.neighborhood}, {c.address.city}
+                      <div className="min-w-0">
+                        <p className="font-semibold text-stone-800 text-sm truncate">{c.user_name}</p>
+                        <p className="text-[11px] text-stone-400 flex items-center gap-1 truncate">
+                          <MapPin className="w-3 h-3 shrink-0" /> {c.address.neighborhood}, {c.address.city}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-xs text-stone-500">
+                    <div className="flex items-center justify-between sm:justify-end gap-2 pl-11 sm:pl-0">
+                      <div className="text-[11px] sm:text-xs text-stone-500 truncate max-w-[55%] sm:max-w-none">
                         {c.materials.map((m) => m.type).join(', ')}
                       </div>
                       <StatusBadge status={c.status} label={c.status_label} />
@@ -181,17 +185,19 @@ export default function CompanyDashboard() {
             )}
           </div>
 
-          <div className="mt-5 bg-white rounded-xl border border-stone-100 p-5 flex flex-wrap items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[#f4f7f0] text-[#537236] flex items-center justify-center">
-              <MapPin className="w-4 h-4" />
+          <div className="mt-5 bg-white rounded-xl border border-stone-100 p-4 sm:p-5 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 shrink-0 rounded-lg bg-[#f4f7f0] text-[#537236] flex items-center justify-center">
+                <MapPin className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-stone-700">Base de operação</p>
+                <p className="text-xs text-stone-500 break-words">{company?.street}, {company?.number} · {company?.neighborhood}, {company?.city}/{company?.state}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-semibold text-stone-700">Base de operação</p>
-              <p className="text-xs text-stone-500">{company?.street}, {company?.number} · {company?.neighborhood}, {company?.city}/{company?.state}</p>
-            </div>
-            <div className="ml-auto flex gap-1.5">
-              <Link to="/empresa/mapa" className="px-3 py-1.5 rounded-lg bg-[#f4f7f0] text-[#537236] text-xs font-semibold hover:bg-[#e4ecda] transition-colors">Mapa</Link>
-              <Link to="/empresa/agenda" className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100 transition-colors">Agenda</Link>
+            <div className="sm:ml-auto flex gap-1.5">
+              <Link to="/empresa/mapa" className="flex-1 sm:flex-none text-center px-3 py-2 sm:py-1.5 min-h-9 rounded-lg bg-[#f4f7f0] text-[#537236] text-xs font-semibold hover:bg-[#e4ecda] transition-colors">Mapa</Link>
+              <Link to="/empresa/agenda" className="flex-1 sm:flex-none text-center px-3 py-2 sm:py-1.5 min-h-9 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100 transition-colors">Agenda</Link>
             </div>
           </div>
         </>

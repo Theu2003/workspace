@@ -10,9 +10,9 @@
 //   5. Escuta em 0.0.0.0 para aceitar conexões de qualquer rede Wi-Fi
 // ===================================================================
 
+import './env.js';                  // ⚠️ PRIMEIRO import: carrega .env antes de qualquer módulo ler process.env
 import express from 'express';       // Framework web para criar o servidor HTTP e rotas
 import cors from 'cors';             // Middleware que habilita CORS (Cross-Origin Resource Sharing)
-import dotenv from 'dotenv';         // Carrega variáveis de ambiente do arquivo .env
 
 // Importação das rotas da API — cada arquivo define um grupo de rotas relacionadas
 import authRoutes from './routes/auth.js';           // Rotas de autenticação (login, registro)
@@ -24,8 +24,8 @@ import statsRoutes from './routes/stats.js';         // Rotas de estatísticas p
 import adminRoutes from './routes/admin.js';         // Rotas do painel administrativo
 import messageRoutes from './routes/messages.js';    // Rotas de mensagens (admin ↔ empresa)
 
-// Carrega variáveis de ambiente do arquivo .env (JWT_SECRET, PORT, etc.)
-dotenv.config();
+// As variáveis de ambiente (.env) são carregadas pelo módulo env.js acima,
+// ANTES de qualquer import — ver comentário no topo de src/env.js
 
 // Cria a instância do aplicativo Express
 const app = express();

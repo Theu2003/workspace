@@ -69,7 +69,7 @@ export default function CompanyProfile() {
 
   return (
     <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-extrabold text-stone-800 mb-1">Perfil da Empresa</h1>
+      <h1 className="text-xl sm:text-2xl font-extrabold text-stone-800 mb-1">Perfil da Empresa</h1>
       <p className="text-sm text-stone-500 mb-6">Gerencie os dados da sua empresa.</p>
 
       {msg && (
@@ -79,10 +79,11 @@ export default function CompanyProfile() {
       )}
 
       <form onSubmit={save} className="space-y-4">
-        <section className="bg-white rounded-xl border border-stone-100 p-5">
+        <section className="bg-white rounded-xl border border-stone-100 p-4 sm:p-5">
           <h2 className="font-bold text-stone-800 text-sm mb-3">Dados da empresa</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
+          {/* Uma coluna no celular, duas no desktop — campos não ficam apertados */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="col-span-1 sm:col-span-2">
               <label className="block text-sm font-medium text-stone-700 mb-1">Nome</label>
               <input className={inputClass} value={form.name} onChange={(e) => setField('name', e.target.value)} required />
             </div>
@@ -102,7 +103,7 @@ export default function CompanyProfile() {
               <label className="block text-sm font-medium text-stone-700 mb-1">Telefone</label>
               <input className={inputClass} value={form.phone} onChange={(e) => setField('phone', e.target.value)} required />
             </div>
-            <div className="col-span-2">
+            <div className="col-span-1 sm:col-span-2">
               <label className="block text-sm font-medium text-stone-700 mb-1">Nova senha <span className="text-xs text-stone-400">(opcional)</span></label>
               <input type="password" className={inputClass} placeholder="Deixe vazio pra manter" value={form.password} onChange={(e) => setField('password', e.target.value)} />
             </div>
@@ -115,14 +116,15 @@ export default function CompanyProfile() {
         </section>
 
         <section className="bg-white rounded-xl border border-stone-100 p-5">
-          <h2 className="font-bold text-stone-800 text-sm mb-2">Materiais coletados</h2>
-          <div className="flex flex-wrap gap-1.5">
+          <h2 className="font-bold text-stone-800 text-sm mb-3">Materiais coletados</h2>
+          {/* Chips maiores no celular: alvo de toque de pelo menos 44px de altura */}
+          <div className="flex flex-wrap gap-2">
             {MATERIAL_OPTIONS.map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => toggleMaterial(m)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                className={`px-4 py-2.5 min-h-11 rounded-full text-sm font-medium border transition-colors ${
                   materials.includes(m)
                     ? 'bg-[#4a6741] border-[#4a6741] text-white'
                     : 'bg-white border-stone-200 text-stone-600 hover:border-[#c9d9b5]'
@@ -134,7 +136,7 @@ export default function CompanyProfile() {
           </div>
         </section>
 
-        <button className="w-full py-2.5 rounded-lg bg-[#4a6741] text-white font-semibold hover:bg-[#364a25] transition-colors">
+        <button className="w-full py-3 min-h-12 rounded-lg bg-[#4a6741] text-white font-semibold hover:bg-[#364a25] transition-colors">
           Salvar alterações
         </button>
       </form>
@@ -146,7 +148,7 @@ export default function CompanyProfile() {
         <p className="text-xs text-stone-500 mb-3">Excluir sua conta removerá todos os seus dados permanentemente.</p>
         <button
           onClick={deleteAccount}
-          className="px-5 py-2.5 rounded-lg border border-red-300 text-red-600 font-semibold text-sm hover:bg-red-50 transition-colors"
+          className="w-full sm:w-auto px-5 py-3 min-h-11 rounded-lg border border-red-300 text-red-600 font-semibold text-sm hover:bg-red-50 transition-colors"
         >
           Excluir minha conta
         </button>

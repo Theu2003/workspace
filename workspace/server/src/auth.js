@@ -14,10 +14,22 @@
 // ===================================================================
 
 import jwt from 'jsonwebtoken';  // Biblioteca para criar e verificar tokens JWT
+import { optionalEnv } from './env.js'; // Leitura de variáveis de ambiente
 
 // Chave secreta para assinar os tokens JWT
-// Em produção, deve ser uma variável de ambiente segura (não hardcoded)
-const JWT_SECRET = process.env.JWT_SECRET || 'ecopickup_secret_dev_key_change_in_production';
+// ⚠️ SEGURANÇA: em produção (NODE_ENV=production), a ausência de JWT_SECRET
+// ENCERRA o servidor — não existe mais fallback com chave fixa no código.
+// Em desenvolvimento, usa uma chave de conveniência (NUNCA use em produção).
+const JWT_SECRET = (() => {
+  const secret = optionalEnv('JWT_SECRET', '');
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    console.error('\n❌ JWT_SECRET não definida — obrigatória em produção (server/.env)\n');
+    process.exit(1);
+  }
+  console.warn('⚠️  JWT_SECRET não definida — usando chave de desenvolvimento. NÃO use em produção!');
+  return 'dev-only-insecure-secret-do-not-use-in-production';
+})();
 
 /**
  * Gera um token JWT com o payload fornecido.

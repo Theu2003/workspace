@@ -1,0 +1,5 @@
+- E-mail:  mateusmartinsperes53@gmail.com 
+- Senha:  Peres2003/ 
+// bash
+cd workspace
+npm run dev

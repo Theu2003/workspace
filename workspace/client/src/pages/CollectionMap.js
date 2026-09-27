@@ -49,7 +49,7 @@ const NEXT_ACTION = {
 };
 const TOAST_TEXT = {
   aceita: 'Coleta aceita',
-  recusada: 'Coleta recusada',
+  recusada: 'Coleta recusada — ela continua disponível para outras empresas',
   agendada: 'Agendamento confirmado',
   em_coleta: 'Coleta iniciada',
   concluida: 'Coleta concluída',
@@ -90,6 +90,16 @@ function FlyTo({ target }) {
   useEffect(() => {
     if (target?.coords) map.flyTo(target.coords, target.zoom ?? 15, { duration: 0.7 });
   }, [target, map]);
+  return null;
+}
+
+/** Recalcula o tamanho do mapa quando o contêiner muda (ex.: alternador Mapa/Lista no celular). */
+function MapInvalidator({ trigger }) {
+  const map = useMap();
+  useEffect(() => {
+    const t = setTimeout(() => map.invalidateSize(), 60);
+    return () => clearTimeout(t);
+  }, [trigger, map]);
   return null;
 }
 
@@ -238,6 +248,11 @@ export default function CollectionMap() {
   const [flyTarget, setFlyTarget] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // No celular: qual visão está ativa — 'map' (tela cheia) ou 'list' (tela cheia).
+  // Em desktop (lg+) as duas aparecem lado a lado, este estado é ignorado.
+  const [mobileView, setMobileView] = useState('map');
+  const [legendOpen, setLegendOpen] = useState(false);
+
   // Ações de status (migradas da antiga tela de Solicitações)
   const [detailOpen, setDetailOpen] = useState(false);
   const [busyId, setBusyId] = useState(null);
@@ -333,11 +348,12 @@ export default function CollectionMap() {
     setMaterialFilter('');
   }
 
-  /** Clique em um card da lista: seleciona, abre popup e centraliza no mapa. */
+  /** Clique em um card da lista: seleciona, abre popup, centraliza no mapa e volta para a visão de mapa (mobile). */
   function selectFromList(c) {
     setSelectedId(c.id);
     setOpenSignal((n) => n + 1);
     setFlyTarget({ coords: [c.latitude, c.longitude], zoom: 15 });
+    setMobileView('map');
   }
 
   /** "Detalhes" do popup: abre painel lateral direito com informações completas. */
@@ -669,10 +685,44 @@ export default function CollectionMap() {
         )}
       </header>
 
+      {/* ── Alternador Mapa/Lista (apenas no celular) ─────────────── */}
+      {/* No desktop (lg+) a lista e o mapa ficam lado a lado, então o alternador some. */}
+      <div className="lg:hidden shrink-0 bg-white border-b border-stone-200 px-3 py-2 flex items-center gap-2">
+        <div className="flex-1 grid grid-cols-2 gap-1 bg-stone-100 rounded-lg p-1">
+          <button
+            onClick={() => setMobileView('map')}
+            className={`flex items-center justify-center gap-1.5 py-2 rounded-md text-sm font-semibold transition-colors ${
+              mobileView === 'map' ? 'bg-white text-[#364a25] shadow-sm' : 'text-stone-500'
+            }`}
+          >
+            <MapPin className="w-4 h-4" /> Mapa
+            <span className={`text-[11px] font-bold ${mobileView === 'map' ? 'text-[#6b8f47]' : 'text-stone-400'}`}>
+              {counts[''] || 0}
+            </span>
+          </button>
+          <button
+            onClick={() => setMobileView('list')}
+            className={`flex items-center justify-center gap-1.5 py-2 rounded-md text-sm font-semibold transition-colors ${
+              mobileView === 'list' ? 'bg-white text-[#364a25] shadow-sm' : 'text-stone-500'
+            }`}
+          >
+            <Search className="w-4 h-4" /> Lista
+            <span className={`text-[11px] font-bold ${mobileView === 'list' ? 'text-[#6b8f47]' : 'text-stone-400'}`}>
+              {filtered.length}
+            </span>
+          </button>
+        </div>
+      </div>
+
       {/* ── Corpo: painel lateral + mapa ──────────────────────────── */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         {/* Painel lateral esquerdo (~27%) */}
-        <aside className="w-full lg:w-[27%] lg:min-w-[320px] lg:max-w-[420px] h-[45dvh] sm:h-[52dvh] lg:h-auto shrink-0 flex flex-col min-h-0 bg-white border-b lg:border-b-0 lg:border-r border-stone-200">
+        {/* No celular: ocupa a tela inteira quando a visão "Lista" está ativa; invisível na visão "Mapa". */}
+        <aside
+          className={`w-full lg:w-[27%] lg:min-w-[320px] lg:max-w-[420px] shrink-0 flex flex-col min-h-0 bg-white lg:border-b-0 lg:border-r border-stone-200 ${
+            mobileView === 'list' ? 'flex-1' : 'hidden lg:flex'
+          }`}
+        >
           <div className="p-4 pb-3 space-y-3 border-b border-stone-100 shrink-0">
             {/* Busca + botão de filtro */}
             <div className="flex gap-2">
@@ -814,8 +864,9 @@ export default function CollectionMap() {
           </div>
         </aside>
 
-        {/* Área do mapa (~73%) — ocupa o restante da altura em qualquer dispositivo */}
-        <section className="relative flex-1 min-h-[280px] sm:min-h-[320px] lg:min-h-0">
+        {/* Área do mapa (~73%) */}
+        {/* No celular: tela cheia na visão "Mapa"; escondido na visão "Lista". */}
+        <section className={`relative flex-1 min-h-0 ${mobileView === 'map' ? 'block' : 'hidden lg:block'}`}>
           <div className="absolute inset-0 map-bleed">
             <MapContainer
               center={[-14.235, -51.9253]}
@@ -831,6 +882,7 @@ export default function CollectionMap() {
               <ScaleControl position="bottomright" imperial={false} />
               <FitInitial points={points} />
               <FlyTo target={flyTarget} />
+              <MapInvalidator trigger={mobileView} />
               {filtered.map((c) => (
                 <MarkerItem
                   key={c.id}
@@ -884,10 +936,17 @@ export default function CollectionMap() {
             </div>
           )}
 
-          {/* Legenda de cores */}
-          <div className="absolute left-3 bottom-3 lg:left-4 lg:bottom-4 z-[1000] bg-white/95 backdrop-blur border border-stone-200 rounded-xl shadow-lg px-3.5 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-2">Legenda</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+          {/* Legenda de cores — colapsável no celular para não cobrir o mapa */}
+          <div className="absolute left-3 bottom-3 lg:left-4 lg:bottom-4 z-[1000] bg-white/95 backdrop-blur border border-stone-200 rounded-xl shadow-lg px-3 py-2.5 lg:px-3.5 lg:py-3">
+            <button
+              onClick={() => setLegendOpen((o) => !o)}
+              className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-400 lg:cursor-default"
+              aria-expanded={legendOpen}
+            >
+              Legenda
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform lg:hidden ${legendOpen ? 'rotate-180' : ''}`} />
+            </button>
+            <div className={`${legendOpen ? 'grid' : 'hidden'} lg:grid grid-cols-2 gap-x-4 gap-y-1.5 mt-2 lg:mt-2`}>
               {STATUS_META.map((s) => (
                 <span key={s.key} className="flex items-center gap-1.5 text-[11px] text-stone-600">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />

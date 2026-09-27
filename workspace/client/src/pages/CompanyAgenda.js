@@ -46,7 +46,7 @@ export default function CompanyAgenda() {
   return (
     <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-stone-800">Agenda da Empresa</h1>
+        <h1 className="text-xl sm:text-2xl font-extrabold text-stone-800">Agenda da Empresa</h1>
         <p className="mt-0.5 text-sm text-stone-500">
           Planeje rotas e confirme coletas.{userCity && <> Coletas em <strong className="text-stone-700">{userCity}</strong>.</>}
         </p>
@@ -56,14 +56,15 @@ export default function CompanyAgenda() {
         <label className="flex items-center gap-1.5 text-sm font-medium text-stone-600">
           <Calendar className="w-4 h-4 text-[#6b8f47]" /> Filtrar data
         </label>
+        {/* min-h-11: alvo de toque confortável no celular (44px) */}
         <input
           type="date"
           value={selectedDate}
           onChange={(e) => setSelectedDate(e.target.value)}
-          className="px-2.5 py-2 rounded-lg border border-stone-200 text-xs outline-none focus:border-[#6b8f47]"
+          className="px-3 py-2.5 min-h-11 rounded-lg border border-stone-200 text-sm outline-none focus:border-[#6b8f47]"
         />
         {selectedDate && (
-          <button onClick={() => setSelectedDate('')} className="text-xs font-medium text-stone-400 hover:text-red-500">
+          <button onClick={() => setSelectedDate('')} className="px-3 py-2.5 min-h-11 text-xs font-medium text-stone-400 hover:text-red-500">
             Limpar
           </button>
         )}
@@ -100,17 +101,18 @@ export default function CompanyAgenda() {
                       {c.materials.map((m) => `${m.type}: ${m.quantity}kg`).join(' · ')}
                     </p>
                   </div>
-                  <div className="flex gap-1.5">
+                  {/* Botões em largura total no celular, alinhados à direita no desktop */}
+                  <div className="flex gap-2">
                     {c.status === 'aceita' && (
                       <button
                         onClick={() => confirm(c.id)}
                         disabled={confirming === c.id}
-                        className="px-3 py-1.5 rounded-lg bg-[#4a6741] text-white text-xs font-semibold hover:bg-[#364a25] transition-colors disabled:opacity-60"
+                        className="flex-1 sm:flex-none px-4 py-2.5 min-h-11 rounded-lg bg-[#4a6741] text-white text-xs font-semibold hover:bg-[#364a25] transition-colors disabled:opacity-60"
                       >
                         {confirming === c.id ? 'Confirmando...' : 'Confirmar'}
                       </button>
                     )}
-                    <Link to="/empresa/mapa" className="px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 text-xs font-semibold hover:bg-sky-100 transition-colors">
+                    <Link to="/empresa/mapa" className="flex-1 sm:flex-none text-center px-4 py-2.5 min-h-11 rounded-lg bg-sky-50 text-sky-700 text-xs font-semibold hover:bg-sky-100 transition-colors">
                       Mapa
                     </Link>
                   </div>

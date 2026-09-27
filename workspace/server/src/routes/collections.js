@@ -80,7 +80,7 @@ function serializeCollection(row) {
  */
 const USER_COLLECTION_COLUMNS = `
   c.id, c.user_id, c.company_id, c.materials, c.address, c.latitude, c.longitude,
-  c.date, c.period, c.observations, c.status, c.created_at, c.updated_at,
+  c.date, c.period, c.observations, c.status, c.rejected_by, c.created_at, c.updated_at,
   u.name AS user_name, u.phone AS user_phone,
   co.name AS company_name,
   co.latitude AS company_latitude, co.longitude AS company_longitude
@@ -216,8 +216,8 @@ router.get('/', requireRole('company'), (req, res) => {
   const conditions = [];
   const params = [];
 
-  // Condição principal: empresa vê suas próprias coletas + pendentes da cidade
-  // (c.company_id = ? OR (c.status = ? AND c.company_id IS NULL AND cidade))
+  // Condição principal: empresa vê suas próprias coletas + pendentes da cidade.
+  // As coletas que esta empresa RECUSOU antes são filtradas no JS abaixo.
   if (company.city) {
     conditions.push('(c.company_id = ? OR (c.status = ? AND c.company_id IS NULL AND JSON_EXTRACT(c.address, "$.city") = ?))');
     params.push(req.auth.id, 'pendente', company.city);
@@ -255,6 +255,16 @@ router.get('/', requireRole('company'), (req, res) => {
      ${where}
      ORDER BY c.created_at DESC`
   ).all(...params);
+
+  // Esconde coletas pendentes que esta empresa RECUSOU antes (rejected_by = JSON array de ids)
+  rows = rows.filter((r) => {
+    if (r.status !== 'pendente' || r.company_id != null) return true;
+    try {
+      return !JSON.parse(r.rejected_by || '[]').includes(Number(req.auth.id));
+    } catch {
+      return true;
+    }
+  });
 
   // Filtro por distância (usa fórmula de Haversine)
   if (distance && rows.length) {
@@ -409,25 +419,99 @@ router.put('/:id/status', requireRole('company'), (req, res) => {
   const collection = db.prepare('SELECT * FROM collections WHERE id = ?').get(req.params.id);
   if (!collection) return res.status(404).json({ error: 'Coleta não encontrada' });
 
-  // ── Cancelamento ou recusa ────────────────────────────────────
-  if (status === 'cancelada' || status === 'recusada') {
+  // Apenas empresas APROVADAS podem interagir com coletas
+  const myCompany = db.prepare('SELECT is_approved FROM companies WHERE id = ?').get(req.auth.id);
+  if (!myCompany?.is_approved) return res.status(403).json({ error: 'Empresa ainda não aprovada pelo administrador' });
+
+  const myId = Number(req.auth.id);
+
+  // ── RECUSA ────────────────────────────────────────────────
+  // A coleta NÃO muda de status: continua 'pendente' para as outras empresas.
+  // O ID da empresa fica registrado em rejected_by (JSON array) e ela deixa de
+  // ver esta coleta na listagem — mas qualquer outra empresa ainda pode aceitar.
+  if (status === 'recusada') {
+    let rejected = [];
+    try { rejected = JSON.parse(collection.rejected_by || '[]'); } catch { rejected = []; }
+    if (!rejected.includes(myId)) rejected.push(myId);
+    db.prepare(
+      `UPDATE collections SET rejected_by = ?, updated_at = datetime('now') WHERE id = ?`
+    ).run(JSON.stringify(rejected), collection.id);
+
+    // Notifica o usuário que uma empresa não pôde atender (sem mudar o status)
+    notifyUser(collection.user_id, 'coleta_recusada_empresa',
+      'Uma empresa não pôde atender sua coleta, mas ela continua disponível para outras empresas da sua região.', collection.id);
+    return res.json({ message: 'Coleta recusada — ainda disponível para outras empresas' });
+  }
+
+  // ── CANCELAMENTO (apenas a empresa atribuída pode cancelar) ──────
+  if (status === 'cancelada') {
+    // Se a coleta ainda está pendente (sem empresa), 'cancelada' não se aplica aqui:
+    // cancelar é ação da empresa dona ou do usuário (não tratado nesta rota).
+    if (collection.company_id !== myId) {
+      return res.status(403).json({ error: 'Apenas a empresa atribuída pode cancelar esta coleta' });
+    }
     db.prepare(
       `UPDATE collections SET status = ?, updated_at = datetime('now') WHERE id = ?`
-    ).run(status, collection.id);
-    // Notifica o usuário sobre o cancelamento/recusa
+    ).run('cancelada', collection.id);
     notifyUser(collection.user_id, 'coleta_cancelada',
-      `Sua coleta foi ${status === 'cancelada' ? 'cancelada' : 'recusada'}. Entre em contato para mais informações.`, collection.id);
+      'Sua coleta foi cancelada pela empresa. Entre em contato para mais informações.', collection.id);
     return res.json({ message: 'Coleta atualizada' });
   }
 
-  // ── Atualização normal de status ─────────────────────────────
+  // ── ACEITE / transições de status ─────────────────────────────
+  // Regras:
+  //   1. Se a coleta ainda é pendente (sem empresa), qualquer empresa aprovada pode
+  //      ACEITAR — mas a operação é ATÔMICA (WHERE company_id IS NULL) para evitar
+  //      que duas empresas aceitem a mesma coleta ao mesmo tempo (condição de corrida).
+  //   2. Se já tem empresa atribuída, SÓ ELA pode avançar o status
+  //      (agendada → em_coleta → concluida). Outras empresas recebem 403.
+  if (collection.company_id == null) {
+    if (status !== 'aceita') {
+      return res.status(400).json({ error: 'Esta coleta precisa ser aceita antes de mudar de status' });
+    }
+    // Empresa não pode aceitar uma coleta que ELA MESMA recusou antes
+    let previouslyRejected = [];
+    try { previouslyRejected = JSON.parse(collection.rejected_by || '[]'); } catch { previouslyRejected = []; }
+    if (previouslyRejected.includes(myId)) {
+      return res.status(403).json({ error: 'Você recusou esta coleta — ela não está mais disponível para sua empresa' });
+    }
+    // UPDATE atômico: só efetiva se a coleta AINDA não tem empresa.
+    // Se outra empresa aceitou primeiro, changes = 0 → conflito 409.
+    const result = db.prepare(
+      `UPDATE collections SET status = 'aceita', company_id = ?, updated_at = datetime('now')
+       WHERE id = ? AND company_id IS NULL`
+    ).run(myId, collection.id);
+    if (result.changes === 0) {
+      return res.status(409).json({ error: 'Outra empresa acabou de aceitar esta coleta' });
+    }
+    notifyUser(collection.user_id, 'coleta_aceita',
+      'Uma empresa aceitou sua solicitação de coleta!', collection.id);
+    return res.json({ message: 'Coleta aceita' });
+  }
+
+  // Coleta já atribuída: só a empresa dona pode avançar o status
+  if (collection.company_id !== myId) {
+    // Caso especial: tentativa de ACEITAR uma coleta que acabou de ser aceita por outra
+    // empresa (condição de corrida) → mensagem de conflito mais clara que 403 genérico
+    if (status === 'aceita') {
+      return res.status(409).json({ error: 'Outra empresa acabou de aceitar esta coleta' });
+    }
+    return res.status(403).json({ error: 'Apenas a empresa atribuída pode atualizar esta coleta' });
+  }
+
+  // Transições válidas a partir de 'aceita': agendada → em_coleta → concluida
+  const VALID_TRANSITIONS = { aceita: ['agendada'], agendada: ['em_coleta'], em_coleta: ['concluida'] };
+  const nextStatuses = VALID_TRANSITIONS[collection.status] || [];
+  if (!nextStatuses.includes(status)) {
+    return res.status(400).json({ error: `Não é possível mudar de "${STATUS_FLOW[collection.status] || collection.status}" para "${STATUS_FLOW[status] || status}"` });
+  }
+
   db.prepare(
-    `UPDATE collections SET status = ?, company_id = ?, updated_at = datetime('now') WHERE id = ?`
-  ).run(status, companyId || req.auth.id, collection.id);
+    `UPDATE collections SET status = ?, updated_at = datetime('now') WHERE id = ?`
+  ).run(status, collection.id);
 
   // Mensagens de notificação para cada transição de status
   const messages = {
-    aceita: 'Uma empresa aceitou sua solicitação de coleta!',
     agendada: 'A data da sua coleta foi confirmada. Prepare seus materiais!',
     em_coleta: 'A empresa está a caminho da sua coleta!',
     concluida: 'Coleta concluída! Obrigado por reciclar e contribuir com o planeta.'
@@ -435,8 +519,7 @@ router.put('/:id/status', requireRole('company'), (req, res) => {
   if (messages[status]) {
     notifyUser(collection.user_id, `coleta_${status}`, messages[status], collection.id);
   }
-
-  res.json({ message: 'Coleta atualizada' });
+  res.json({ message: 'Coleta atualizada' });
 });
 
 // ── Rota: Detalhes de uma coleta ────────────────────────────────────

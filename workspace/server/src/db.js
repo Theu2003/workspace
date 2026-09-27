@@ -13,10 +13,12 @@
 //   6. Cria o usuário administrador padrão se não existir
 // ===================================================================
 
+import './env.js';                    // ⚠️ PRIMEIRO import: carrega .env antes de qualquer leitura de env
 import initSqlJs from 'sql.js';       // Inicializa o SQLite compilado para WASM
 import fs from 'node:fs';             // Módulo nativo para operações com arquivos
 import path from 'node:path';         // Módulo nativo para manipulação de caminhos
 import { fileURLToPath } from 'node:url'; // Converte import.meta.url para caminho de arquivo
+import { requireEnv, optionalEnv } from './env.js';
 
 // ── Configuração de caminhos ──────────────────────────────────────
 // __dirname: diretório atual do arquivo (src/)
@@ -309,17 +311,31 @@ CREATE TABLE IF NOT EXISTS collection_messages (
 `);
 
 // ── Seed: cria o usuário administrador padrão ──────────────────────
-// Se o admin não existe ainda, cria com email e senha fixos
+// Se o admin não existe ainda, cria com os dados vindos de variáveis de
+// ambiente (.env) — NUNCA de valores fixos no código.
+//
+// Variáveis esperadas (veja .env.example):
+//   ADMIN_EMAIL  → e-mail de login do administrador
+//   ADMIN_PASSWORD → senha inicial (mínimo 6 caracteres)
+//   ADMIN_NAME   → nome exibido (opcional, padrão "Administrador")
 import bcrypt from 'bcryptjs';
 
-const adminEmail = 'mateusmartinsperes53@gmail.com';
+const adminEmail = requireEnv('ADMIN_EMAIL');
+const adminPassword = requireEnv('ADMIN_PASSWORD');
+const adminName = optionalEnv('ADMIN_NAME', 'Administrador');
+
+if (adminPassword.length < 6) {
+  console.error('❌ ADMIN_PASSWORD deve ter pelo menos 6 caracteres');
+  process.exit(1);
+}
+
 const existingAdmin = db.prepare('SELECT id FROM users WHERE email = ?').get(adminEmail);
 if (!existingAdmin) {
-  const adminHash = bcrypt.hashSync('Peres2003/', 10); // Senha hasheada com 10 rounds de salt
+  const adminHash = bcrypt.hashSync(adminPassword, 10); // Senha hasheada com 10 rounds de salt
   db.prepare(
     `INSERT INTO users (name, cpf, email, phone, password_hash, role) VALUES (?, ?, ?, ?, ?, ?)`
-  ).run('Administrador', '00000000000', adminEmail, '38998962288', adminHash, 'admin');
-  console.log('✅ Usuário administrador criado com sucesso');
+  ).run(adminName, '00000000000', adminEmail, '', adminHash, 'admin');
+  console.log(`✅ Usuário administrador criado (${adminEmail})`);
 }
 
 // ── Migrações: adiciona colunas que podem não existir ──────────────
@@ -335,6 +351,15 @@ try {
 // Adiciona a coluna "is_approved" na tabela companies (controle de aprovação)
 try {
   db.exec(`ALTER TABLE companies ADD COLUMN is_approved INTEGER NOT NULL DEFAULT 0`);
+} catch {
+  // Coluna já existe, ignora silenciosamente
+}
+
+// Adiciona a coluna "rejected_by" na tabela collections: guarda os IDs (JSON array)
+// das empresas que RECUSARAM cada coleta. Assim a coleta recusada volta a ficar
+// disponível para as outras empresas, mas não é mais oferecida a quem recusou.
+try {
+  db.exec(`ALTER TABLE collections ADD COLUMN rejected_by TEXT NOT NULL DEFAULT '[]'`);
 } catch {
   // Coluna já existe, ignora silenciosamente
 }
