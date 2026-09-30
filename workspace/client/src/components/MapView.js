@@ -1,3 +1,6 @@
+// Titulo: MapView
+// Autor: Mateus Martins Peres
+// Finalidade: Componente React responsavel por MapView.
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { useEffect, useMemo, useState } from 'react';
@@ -16,12 +19,6 @@ const orangeIcon = L.divIcon({
   iconAnchor: [17, 34]
 });
 
-/**
- * Cria um ícone de pinho colorido para marcadores do mapa.
- * @param {string} color - Cor de preenchimento do pin (hex)
- * @param {number} [size] - Tamanho em px (padrão 34)
- * @param {string} [extraClass] - Classes CSS extras aplicadas ao div do ícone
- */
 export function getPinIcon(color, size = 34, extraClass = '') {
   return L.divIcon({
     className: extraClass,
@@ -49,7 +46,7 @@ function PolylinePath({ positions }) {
       opacity: 0.8,
       dashArray: '8, 6'
     }).addTo(map);
-    // Fit map to show entire route
+
     const bounds = L.latLngBounds(positions);
     map.fitBounds(bounds, { padding: [40, 40] });
     return () => { line.remove(); };
@@ -57,9 +54,6 @@ function PolylinePath({ positions }) {
   return null;
 }
 
-/**
- * Captura cliques no mapa (modo interativo) e repassa as coordenadas.
- */
 function ClickPicker({ onPick }) {
   useMapEvents({
     click(e) {
@@ -69,19 +63,6 @@ function ClickPicker({ onPick }) {
   return null;
 }
 
-/**
- * MapView — mapa Leaflet reutilizável.
- *
- * Modo normal: apenas exibe marcadores/rota (comportamento original).
- *
- * Modo interativo (quando `onPositionChange` é informado):
- *   - Clique em qualquer ponto do mapa reposiciona o pin
- *   - O primeiro marcador fica arrastável (drag & drop)
- *   - Botão flutuante "GPS" usa a localização real do dispositivo
- *   - Scroll do mouse habilitado para zoom
- *
- * @param {Function} [onPositionChange] - (latitude, longitude) => void; ativa o modo interativo
- */
 export default function MapView({ markers, center, zoom = 14, showRadius, className = '', onSelect, height = '400px', routePositions, onPositionChange }) {
   const interactive = typeof onPositionChange === 'function';
 
@@ -102,10 +83,9 @@ export default function MapView({ markers, center, zoom = 14, showRadius, classN
 
   const mapCenter = center ?? defaultCenter;
   const hasMarkers = markers.some((m) => m.latitude && m.longitude);
-  // Índice do primeiro marcador válido — ele se torna arrastável no modo interativo
+
   const firstValidIdx = markers.findIndex((m) => m.latitude && m.longitude);
 
-  /** Pede a localização real do dispositivo (GPS) e reposiciona o pin. */
   function handleGps() {
     if (!navigator.geolocation) {
       setGpsMessage('Geolocalização não suportada neste navegador.');
@@ -183,7 +163,7 @@ export default function MapView({ markers, center, zoom = 14, showRadius, classN
         ) : null}
       </MapContainer>
 
-      {/* Overlay do modo interativo: dica de uso + botão GPS */}
+      { }
       {interactive && (
         <>
           <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-[1000] max-w-[90%]">

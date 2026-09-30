@@ -1,16 +1,6 @@
-// ===================================================================
-// CollectionMap.jsx — Tela "Mapa de Coletas" (visão logística)
-// ===================================================================
-// Layout profissional de sistemas de gestão de entregas:
-//   1. Navbar horizontal própria (logo, Dashboard, Solicitações,
-//      Mapa de Coletas, Agenda, notificações, avatar e Sair)
-//   2. Painel lateral esquerdo (~27%): busca, botão de filtros,
-//      chips de status e lista vertical de cards de solicitações
-//   3. Área direita (~73%): mapa Leaflet/OpenStreetMap ocupando toda
-//      a altura, com marcadores coloridos por status, popup moderno
-//      com ações e legenda de cores no canto inferior esquerdo
-// ===================================================================
-
+// Titulo: CollectionMap
+// Autor: Mateus Martins Peres
+// Finalidade: Pagina React responsavel por CollectionMap.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { MapContainer, Marker, Popup, ScaleControl, TileLayer, useMap } from 'react-leaflet';
@@ -21,27 +11,23 @@ import StatusBadge from '../components/StatusBadge';
 import { getPinIcon } from '../components/MapView';
 import { Bell, Calendar, CheckCircle, ChevronDown, ChevronUp, MapPin, MessageSquare, Package, Phone, Search, Send, Sliders, X, XCircle } from '../components/Icons';
 
-// ── Status: cor do marcador + rótulo (filtros, legenda e popups) ────
 const STATUS_META = [
-  { key: 'pendente', label: 'Pendentes', color: '#f97316' },   // laranja
-  { key: 'aceita', label: 'Aceitas', color: '#2563eb' },      // azul
-  { key: 'agendada', label: 'Agendadas', color: '#7c3aed' },  // roxo
-  { key: 'em_coleta', label: 'Em coleta', color: '#c026d3' }, // magenta
-  { key: 'concluida', label: 'Concluídas', color: '#16a34a' },// verde
-  { key: 'cancelada', label: 'Canceladas', color: '#dc2626' },// vermelho
-  { key: 'recusada', label: 'Recusadas', color: '#9ca3af' }   // cinza
+  { key: 'pendente', label: 'Pendentes', color: '#f97316' },
+  { key: 'aceita', label: 'Aceitas', color: '#2563eb' },
+  { key: 'agendada', label: 'Agendadas', color: '#7c3aed' },
+  { key: 'em_coleta', label: 'Em coleta', color: '#c026d3' },
+  { key: 'concluida', label: 'Concluídas', color: '#16a34a' },
+  { key: 'cancelada', label: 'Canceladas', color: '#dc2626' },
+  { key: 'recusada', label: 'Recusadas', color: '#9ca3af' }
 ];
 const COLOR_BY_STATUS = Object.fromEntries(STATUS_META.map((s) => [s.key, s.color]));
 
-// ── Menus da navbar (perfil empresa) ────────────────────────────────
 const MENU_LINKS = [
   { to: '/empresa/dashboard', label: 'Dashboard' },
   { to: '/empresa/mapa', label: 'Mapa de Coletas' },
   { to: '/empresa/agenda', label: 'Agenda' }
 ];
 
-// ── Ações de fluxo (migradas da antiga tela de Solicitações) ────────
-// Próxima etapa do fluxo por status + textos de feedback (toast)
 const NEXT_ACTION = {
   aceita: { next: 'agendada', label: 'Confirmar agendamento' },
   agendada: { next: 'em_coleta', label: 'Iniciar coleta' },
@@ -56,7 +42,6 @@ const TOAST_TEXT = {
   cancelada: 'Coleta cancelada'
 };
 
-// ── Helpers de formatação ───────────────────────────────────────────
 const paddedId = (n) => String(n ?? '').padStart(6, '0');
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 const totalKg = (c) => {
@@ -66,9 +51,6 @@ const totalKg = (c) => {
 const fullAddress = (c) =>
   `${c.address?.street ?? ''}, ${c.address?.number ?? ''} - ${c.address?.neighborhood ?? ''}`.replace(/^,\s*,\s*/, '');
 
-// ── Auxiliares de mapa ──────────────────────────────────────────────
-
-/** Ajusta o mapa para mostrar todos os marcadores no primeiro carregamento. */
 function FitInitial({ points }) {
   const map = useMap();
   const didFit = useRef(false);
@@ -84,7 +66,6 @@ function FitInitial({ points }) {
   return null;
 }
 
-/** Anima o mapa até um alvo { coords, zoom } (ex.: "Ver no mapa"). */
 function FlyTo({ target }) {
   const map = useMap();
   useEffect(() => {
@@ -93,7 +74,6 @@ function FlyTo({ target }) {
   return null;
 }
 
-/** Recalcula o tamanho do mapa quando o contêiner muda (ex.: alternador Mapa/Lista no celular). */
 function MapInvalidator({ trigger }) {
   const map = useMap();
   useEffect(() => {
@@ -103,7 +83,6 @@ function MapInvalidator({ trigger }) {
   return null;
 }
 
-/** Marcador com popup; abre o popup programaticamente quando selecionado. */
 function MarkerItem({ c, selected, openSignal, onSelect, children }) {
   const ref = useRef(null);
   useEffect(() => {
@@ -126,13 +105,6 @@ function MarkerItem({ c, selected, openSignal, onSelect, children }) {
   );
 }
 
-/**
- * Conteúdo do popup moderno (branco, arredondado, com ações).
- * Ações migradas da antiga tela de Solicitações:
- *   - pendente → Aceitar / Recusar
- *   - aceita → Confirmar agendamento | agendada → Iniciar coleta
- *   - em_coleta → Concluir | ativas → Cancelar
- */
 function PopupContent({ c, onDetails, onZoom, onStatus, busy }) {
   const next = NEXT_ACTION[c.status];
   const active = ['aceita', 'agendada', 'em_coleta'].includes(c.status);
@@ -226,34 +198,27 @@ function PopupContent({ c, onDetails, onZoom, onStatus, busy }) {
   );
 }
 
-// ── Página ──────────────────────────────────────────────────────────
 export default function CollectionMap() {
   const navigate = useNavigate();
   const { logout, unread, company } = useAuth();
 
-  // Dados
   const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  // Busca e filtros
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [materialFilter, setMaterialFilter] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
 
-  // Seleção / mapa / menu mobile
   const [selectedId, setSelectedId] = useState(null);
   const [openSignal, setOpenSignal] = useState(0);
   const [flyTarget, setFlyTarget] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // No celular: qual visão está ativa — 'map' (tela cheia) ou 'list' (tela cheia).
-  // Em desktop (lg+) as duas aparecem lado a lado, este estado é ignorado.
   const [mobileView, setMobileView] = useState('map');
   const [legendOpen, setLegendOpen] = useState(false);
 
-  // Ações de status (migradas da antiga tela de Solicitações)
   const [detailOpen, setDetailOpen] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const [toast, setToast] = useState('');
@@ -265,7 +230,6 @@ export default function CollectionMap() {
     toastTimer.current = setTimeout(() => setToast(''), 3500);
   }
 
-  /** Atualiza o status da coleta e recarrega a lista. */
   async function updateStatus(c, status) {
     setBusyId(c.id);
     try {
@@ -313,7 +277,6 @@ export default function CollectionMap() {
     return acc;
   }, [withCoords]);
 
-  // Lista filtrada (status + material + busca por nome, endereço ou ID)
   const filtered = useMemo(
     () =>
       withCoords.filter((c) => {
@@ -348,7 +311,6 @@ export default function CollectionMap() {
     setMaterialFilter('');
   }
 
-  /** Clique em um card da lista: seleciona, abre popup, centraliza no mapa e volta para a visão de mapa (mobile). */
   function selectFromList(c) {
     setSelectedId(c.id);
     setOpenSignal((n) => n + 1);
@@ -356,7 +318,6 @@ export default function CollectionMap() {
     setMobileView('map');
   }
 
-  /** "Detalhes" do popup: abre painel lateral direito com informações completas. */
   function goDetails(c) {
     setSelectedId(c.id);
     setOpenSignal((n) => n + 1);
@@ -372,8 +333,6 @@ export default function CollectionMap() {
     setFlyTarget(null);
   }
 
-  // ── Painel de detalhes (conteúdo migrado da tela de Solicitações) ──
-  // Chat empresa ↔ usuário
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -465,7 +424,7 @@ export default function CollectionMap() {
           )}
         </dl>
 
-        {/* Materiais */}
+        { }
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5">Materiais</p>
           <div className="flex flex-wrap gap-1.5">
@@ -480,7 +439,7 @@ export default function CollectionMap() {
           </div>
         </div>
 
-        {/* Chat (status ativos) — pode ser ocultado/mostrado pelo botão */}
+        { }
         {['aceita', 'agendada', 'em_coleta', 'concluida'].includes(selected.status) && (
           <div className="rounded-xl border border-stone-200 overflow-hidden">
             <button
@@ -555,7 +514,7 @@ export default function CollectionMap() {
         )}
       </div>
 
-      {/* Ações de fluxo no rodapé do painel */}
+      { }
       <div className="p-3 border-t border-stone-100 shrink-0 bg-[#faf8f5]">
         {selected.status === 'pendente' ? (
           <div className="grid grid-cols-2 gap-2">
@@ -600,7 +559,7 @@ export default function CollectionMap() {
 
   return (
     <div className="h-dvh flex flex-col overflow-hidden bg-[#f7f6f3]">
-      {/* ── Navbar horizontal ─────────────────────────────────────── */}
+      { }
       <header className="h-14 shrink-0 bg-white border-b border-stone-200 flex items-center gap-3 px-4 sm:px-6 relative z-[1200]">
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <span className="w-8 h-8 rounded-lg bg-[#4a6741] flex items-center justify-center text-white text-sm font-bold">
@@ -685,8 +644,8 @@ export default function CollectionMap() {
         )}
       </header>
 
-      {/* ── Alternador Mapa/Lista (apenas no celular) ─────────────── */}
-      {/* No desktop (lg+) a lista e o mapa ficam lado a lado, então o alternador some. */}
+      { }
+      { }
       <div className="lg:hidden shrink-0 bg-white border-b border-stone-200 px-3 py-2 flex items-center gap-2">
         <div className="flex-1 grid grid-cols-2 gap-1 bg-stone-100 rounded-lg p-1">
           <button
@@ -714,17 +673,17 @@ export default function CollectionMap() {
         </div>
       </div>
 
-      {/* ── Corpo: painel lateral + mapa ──────────────────────────── */}
+      { }
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-        {/* Painel lateral esquerdo (~27%) */}
-        {/* No celular: ocupa a tela inteira quando a visão "Lista" está ativa; invisível na visão "Mapa". */}
+        { }
+        { }
         <aside
           className={`w-full lg:w-[27%] lg:min-w-[320px] lg:max-w-[420px] shrink-0 flex flex-col min-h-0 bg-white lg:border-b-0 lg:border-r border-stone-200 ${
             mobileView === 'list' ? 'flex-1' : 'hidden lg:flex'
           }`}
         >
           <div className="p-4 pb-3 space-y-3 border-b border-stone-100 shrink-0">
-            {/* Busca + botão de filtro */}
+            { }
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -775,7 +734,7 @@ export default function CollectionMap() {
               </div>
             </div>
 
-            {/* Título */}
+            { }
             <div>
               <h2 className="text-sm font-bold text-stone-800">Solicitações de Coleta</h2>
               <p className="text-[11px] text-stone-400 mt-0.5">
@@ -783,7 +742,7 @@ export default function CollectionMap() {
               </p>
             </div>
 
-            {/* Chips de status */}
+            { }
             <div className="flex flex-wrap gap-1.5">
               {[{ key: '', label: 'Todas' }, ...STATUS_META].map((s) => {
                 const active = statusFilter === s.key;
@@ -805,7 +764,7 @@ export default function CollectionMap() {
             </div>
           </div>
 
-          {/* Lista de solicitações */}
+          { }
           <div className="flex-1 min-h-0 overflow-y-auto nice-scroll p-3 space-y-2.5 bg-[#faf8f5]">
             {loading ? (
               [0, 1, 2, 3].map((i) => <div key={i} className="h-[92px] rounded-xl bg-stone-200/60 animate-pulse" />)
@@ -864,8 +823,8 @@ export default function CollectionMap() {
           </div>
         </aside>
 
-        {/* Área do mapa (~73%) */}
-        {/* No celular: tela cheia na visão "Mapa"; escondido na visão "Lista". */}
+        { }
+        { }
         <section className={`relative flex-1 min-h-0 ${mobileView === 'map' ? 'block' : 'hidden lg:block'}`}>
           <div className="absolute inset-0 map-bleed">
             <MapContainer
@@ -905,7 +864,7 @@ export default function CollectionMap() {
             </MapContainer>
           </div>
 
-          {/* Aviso: nenhum resultado */}
+          { }
           {!loading && filtered.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[900]">
               <div className="bg-white/95 border border-stone-200 rounded-xl shadow-lg px-5 py-4 text-center">
@@ -916,7 +875,7 @@ export default function CollectionMap() {
             </div>
           )}
 
-          {/* Fundo clicável para fechar o painel no mobile */}
+          { }
           {detailOpen && (
             <button
               onClick={() => setDetailOpen(false)}
@@ -926,17 +885,17 @@ export default function CollectionMap() {
             />
           )}
 
-          {/* Painel de detalhes (migrado da antiga tela de Solicitações) */}
+          { }
           {detailPanel}
 
-          {/* Toast de feedback das ações */}
+          { }
           {toast && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1200] bg-[#364a25] text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-xl animate-[fadeIn_.2s_ease-out]">
               {toast}
             </div>
           )}
 
-          {/* Legenda de cores — colapsável no celular para não cobrir o mapa */}
+          { }
           <div className="absolute left-3 bottom-3 lg:left-4 lg:bottom-4 z-[1000] bg-white/95 backdrop-blur border border-stone-200 rounded-xl shadow-lg px-3 py-2.5 lg:px-3.5 lg:py-3">
             <button
               onClick={() => setLegendOpen((o) => !o)}

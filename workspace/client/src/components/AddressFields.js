@@ -1,3 +1,6 @@
+// Titulo: AddressFields
+// Autor: Mateus Martins Peres
+// Finalidade: Componente React responsavel por AddressFields.
 import { useState } from 'react';
 
 export default function AddressFields({ values, onChange, required = true }) {
@@ -16,7 +19,7 @@ export default function AddressFields({ values, onChange, required = true }) {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          // Reverse geocode using Nominatim
+
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=pt-BR`,
             { headers: { 'User-Agent': 'ReciclaJa/1.0 (reciclagem app)' } }
@@ -74,7 +77,8 @@ export default function AddressFields({ values, onChange, required = true }) {
       {geoStatus && (
         <p className="mb-3 text-xs text-sky-700 bg-sky-50 border border-sky-200 rounded-lg px-3 py-2">{geoStatus}</p>
       )}
-      <div className="grid grid-cols-2 gap-4">
+      { }
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">CEP</label>
           <input
@@ -116,7 +120,7 @@ export default function AddressFields({ values, onChange, required = true }) {
             onChange={(e) => onChange('neighborhood', e.target.value)}
           />
         </div>
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <label className="block text-sm font-semibold text-gray-700 mb-1">Rua</label>
           <input
             className={inputClass}

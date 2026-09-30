@@ -1,3 +1,6 @@
+// Titulo: RegisterUser
+// Autor: Mateus Martins Peres
+// Finalidade: Pagina React responsavel por RegisterUser.
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';

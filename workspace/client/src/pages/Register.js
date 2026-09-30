@@ -1,3 +1,6 @@
+// Titulo: Register
+// Autor: Mateus Martins Peres
+// Finalidade: Pagina React responsavel por Register.
 import { Link } from 'react-router-dom';
 
 export default function Register() {

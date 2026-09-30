@@ -1,13 +1,6 @@
-// ===================================================================
-// ErrorBoundary.jsx — Barreira de erro global da aplicação
-// ===================================================================
-// Captura erros de renderização do React (ex.: variável usada antes
-// de declarada, dado inesperado da API) e mostra uma tela amigável
-// com opção de recarregar, em vez de deixar a página toda branca.
-//
-// Uso (main.jsx): envolve <App /> para proteger toda a aplicação.
-// ===================================================================
-
+// Titulo: ErrorBoundary
+// Autor: Mateus Martins Peres
+// Finalidade: Componente React responsavel por ErrorBoundary.
 import { Component } from 'react';
 
 export default class ErrorBoundary extends Component {
@@ -21,7 +14,7 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // Loga no console para facilitar o diagnóstico em desenvolvimento
+
     console.error('[ErrorBoundary]', error, info?.componentStack);
   }
 

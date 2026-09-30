@@ -1,3 +1,6 @@
+// Titulo: UserProfile
+// Autor: Mateus Martins Peres
+// Finalidade: Pagina React responsavel por UserProfile.
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth';
 import { api } from '../api';

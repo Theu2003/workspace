@@ -1,3 +1,6 @@
+// Titulo: CompanyAgenda
+// Autor: Mateus Martins Peres
+// Finalidade: Pagina React responsavel por CompanyAgenda.
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
@@ -56,7 +59,7 @@ export default function CompanyAgenda() {
         <label className="flex items-center gap-1.5 text-sm font-medium text-stone-600">
           <Calendar className="w-4 h-4 text-[#6b8f47]" /> Filtrar data
         </label>
-        {/* min-h-11: alvo de toque confortável no celular (44px) */}
+        { }
         <input
           type="date"
           value={selectedDate}
@@ -101,7 +104,7 @@ export default function CompanyAgenda() {
                       {c.materials.map((m) => `${m.type}: ${m.quantity}kg`).join(' · ')}
                     </p>
                   </div>
-                  {/* Botões em largura total no celular, alinhados à direita no desktop */}
+                  { }
                   <div className="flex gap-2">
                     {c.status === 'aceita' && (
                       <button

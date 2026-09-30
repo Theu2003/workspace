@@ -1,3 +1,6 @@
+// Titulo: CompanyPending
+// Autor: Mateus Martins Peres
+// Finalidade: Pagina React responsavel por CompanyPending.
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { Clock } from '../components/Icons';

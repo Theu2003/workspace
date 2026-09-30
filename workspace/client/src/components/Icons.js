@@ -1,8 +1,6 @@
-/**
- * @typedef {Object} IconProps
- * @property {string} [className]
- */
-
+// Titulo: Icons
+// Autor: Mateus Martins Peres
+// Finalidade: Componente React responsavel por Icons.
 export function Bell({ className = 'w-5 h-5' }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">

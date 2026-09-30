@@ -1,3 +1,6 @@
+// Titulo: MyCollections
+// Autor: Mateus Martins Peres
+// Finalidade: Pagina React responsavel por MyCollections.
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { api } from '../api';
 import StatusBadge from '../components/StatusBadge';
@@ -18,7 +21,6 @@ export default function MyCollections() {
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Chat state
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -41,7 +43,6 @@ export default function MyCollections() {
     return c.status === filter;
   });
 
-  // Fetch route from OSRM between company and user
   const [routePositions, setRoutePositions] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
 
@@ -52,7 +53,7 @@ export default function MyCollections() {
     }
     setRouteLoading(true);
     try {
-      // OSRM uses lng,lat format
+
       const url = `https://router.project-osrm.org/route/v1/driving/${col.company_longitude},${col.company_latitude};${col.longitude},${col.latitude}?overview=simplified&geometries=geojson`;
       const res = await fetch(url);
       const data = await res.json();
@@ -77,7 +78,6 @@ export default function MyCollections() {
     }
   }, [selected, fetchRoute]);
 
-  // Chat: carregar mensagens quando coleta selecionada muda
   useEffect(() => {
     if (selected && ['aceita', 'agendada', 'em_coleta', 'concluida'].includes(selected.status) && selected.company_id) {
       loadChat(selected.id);
@@ -86,7 +86,6 @@ export default function MyCollections() {
     }
   }, [selected?.id]);
 
-  // Auto-scroll no chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
@@ -204,7 +203,7 @@ export default function MyCollections() {
                     </div>
                   </div>
 
-                  {/* Chat usuário → empresa */}
+                  { }
                   {['aceita', 'agendada', 'em_coleta', 'concluida'].includes(selected.status) && selected.company_id && (
                     <div className="mt-4 pt-3 border-t border-stone-100">
                       <h3 className="text-xs font-bold text-stone-500 mb-2 flex items-center gap-1.5">

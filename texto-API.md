@@ -214,4 +214,4 @@ Usuário                        Empresa A                Empresa B
 
 ---
 
-_Última atualização: 27/09/2026 — ReciclaJá v1.0_
+_Última atualização: 27/06/2026 — ReciclaJá v1.0_

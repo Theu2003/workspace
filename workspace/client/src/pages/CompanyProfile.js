@@ -1,3 +1,6 @@
+// Titulo: CompanyProfile
+// Autor: Mateus Martins Peres
+// Finalidade: Pagina React responsavel por CompanyProfile.
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
@@ -81,7 +84,7 @@ export default function CompanyProfile() {
       <form onSubmit={save} className="space-y-4">
         <section className="bg-white rounded-xl border border-stone-100 p-4 sm:p-5">
           <h2 className="font-bold text-stone-800 text-sm mb-3">Dados da empresa</h2>
-          {/* Uma coluna no celular, duas no desktop — campos não ficam apertados */}
+          { }
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="col-span-1 sm:col-span-2">
               <label className="block text-sm font-medium text-stone-700 mb-1">Nome</label>
@@ -117,7 +120,7 @@ export default function CompanyProfile() {
 
         <section className="bg-white rounded-xl border border-stone-100 p-5">
           <h2 className="font-bold text-stone-800 text-sm mb-3">Materiais coletados</h2>
-          {/* Chips maiores no celular: alvo de toque de pelo menos 44px de altura */}
+          { }
           <div className="flex flex-wrap gap-2">
             {MATERIAL_OPTIONS.map((m) => (
               <button

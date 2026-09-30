@@ -1,3 +1,6 @@
+// Titulo: Notifications
+// Autor: Mateus Martins Peres
+// Finalidade: Pagina React responsavel por Notifications.
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';

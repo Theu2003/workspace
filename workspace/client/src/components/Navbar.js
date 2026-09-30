@@ -1,3 +1,6 @@
+// Titulo: Navbar
+// Autor: Mateus Martins Peres
+// Finalidade: Componente React responsavel por Navbar.
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';

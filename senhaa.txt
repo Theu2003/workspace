@@ -1,5 +1,9 @@
-- E-mail:  mateusmartinsperes53@gmail.com 
-- Senha:  Peres2003/ 
+- E-mail:  mateusmartinsperes53@gmail.com
+- Senha:  Peres2003/
 // bash
-cd workspace
+Terminal 1: backend
+cd workspace/server
+npm run dev
+Terminal 2: frontend
+cd workspace/client
 npm run dev

@@ -1,69 +1,41 @@
-// ===================================================================
-// db.js — Módulo de banco de dados SQLite (sql.js)
-// ===================================================================
-// Este arquivo gerencia todo o banco de dados do ReciclaJá usando SQLite
-// via sql.js (SQLite compilado para WebAssembly).
-//
-// Funcionalidades:
-//   1. Inicializa o banco de dados a partir de um arquivo SQLite no disco
-//   2. Cria a estrutura de tabelas (users, addresses, companies, collections, etc.)
-//   3. Cria um wrapper com API similar ao better-sqlite3 para simplificar o uso
-//   4. Salva automaticamente as alterações no disco após cada operação de escrita
-//   5. Faz migrações simples (adicionar colunas que não existem)
-//   6. Cria o usuário administrador padrão se não existir
-// ===================================================================
-
-import './env.js';                    // ⚠️ PRIMEIRO import: carrega .env antes de qualquer leitura de env
-import initSqlJs from 'sql.js';       // Inicializa o SQLite compilado para WASM
-import fs from 'node:fs';             // Módulo nativo para operações com arquivos
-import path from 'node:path';         // Módulo nativo para manipulação de caminhos
-import { fileURLToPath } from 'node:url'; // Converte import.meta.url para caminho de arquivo
+// Titulo: db
+// Autor: Mateus Martins Peres
+// Finalidade: Modulo do backend responsavel por db.
+import './env.js';
+import initSqlJs from 'sql.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { requireEnv, optionalEnv } from './env.js';
 
-// ── Configuração de caminhos ──────────────────────────────────────
-// __dirname: diretório atual do arquivo (src/)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// dataDir: pasta onde o arquivo SQLite será salvo (server/data/)
+
 const dataDir = path.join(__dirname, '..', 'data');
-// Cria a pasta data/ se não existir
+
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-// Caminho completo do arquivo de banco de dados SQLite
 const dbPath = path.join(dataDir, 'ecopickup.sqlite');
 
-// ── Inicialização do sql.js ────────────────────────────────────────
-// initSqlJs() retorna a instância do SQLite compilado para WASM
-// Usamos top-level await (suportado em módulos ES)
 const SQL = await initSqlJs();
 
-// Carrega o banco existente do disco ou cria um novo
 let sqlDb;
 if (fs.existsSync(dbPath)) {
-  // Se o arquivo já existe, carrega os dados do disco para a memória
+
   const buffer = fs.readFileSync(dbPath);
   sqlDb = new SQL.Database(buffer);
 } else {
-  // Se não existe, cria um banco vazio em memória
+
   sqlDb = new SQL.Database();
 }
 
-// Ativa chaves estrangeiras (SQLite desativa por padrão)
 sqlDb.run('PRAGMA foreign_keys = ON');
 
-// ── Função para salvar o banco no disco ────────────────────────────
-// sql.js trabalha em memória, então precisamos exportar e salvar
-// periodicamente para persistir os dados
 function saveDb() {
-  const data = sqlDb.export();          // Exporta o banco como array de bytes
-  const buffer = Buffer.from(data);     // Converte para Buffer do Node.js
-  fs.writeFileSync(dbPath, buffer);     // Salva no arquivo SQLite
+  const data = sqlDb.export();
+  const buffer = Buffer.from(data);
+  fs.writeFileSync(dbPath, buffer);
 }
 
-// ── Funções auxiliares para converter resultados sql.js ─────────────
-// sql.js retorna resultados em formato { columns: [...], values: [[...]] }
-// Essas funções convertem para objetos JavaScript { col1: val1, col2: val2 }
-
-/** Converte todos os resultados de uma query em array de objetos */
 function rowsFromResult(result) {
   if (!result || result.length === 0) return [];
   const { columns, values } = result[0];
@@ -74,43 +46,25 @@ function rowsFromResult(result) {
   });
 }
 
-/** Retorna apenas a primeira linha do resultado (ou undefined se vazio) */
 function singleRow(result) {
   const rows = rowsFromResult(result);
   return rows.length > 0 ? rows[0] : undefined;
 }
 
-// ── Wrapper da API do banco de dados ───────────────────────────────
-// Cria uma API que imita o better-sqlite3, que é o que o projeto
-// originalmente usava. Assim não precisamos mudar todo o código.
-//
-// Uso:
-//   db.exec('CREATE TABLE ...')           → Executa SQL sem retorno
-//   db.prepare('SELECT * FROM t').get()   → Retorna uma linha
-//   db.prepare('SELECT * FROM t').all()   → Retorna todas as linhas
-//   db.prepare('INSERT ...').run(params)  → Executa INSERT/UPDATE/DELETE
 const db = {
-  /** Executa SQL direto (DDL, migrations, etc.) */
+
   exec(sql) {
     sqlDb.exec(sql);
-    saveDb();  // Salva no disco após alteração
+    saveDb();
   },
 
-  /** Ignorado — sql.js não suporta WAL pragma */
   pragma(_str) {
-    // sql.js não suporta WAL (Write-Ahead Logging), ignoramos silenciosamente
+
   },
 
-  /**
-   * Prepara uma statement SQL parametrizada (protege contra SQL injection).
-   * Retorna um objeto com três métodos:
-   *   .get(...params)  → Retorna UMA linha ou undefined
-   *   .all(...params)  → Retorna TODAS as linhas como array
-   *   .run(...params)  → Executa INSERT/UPDATE/DELETE, retorna { changes, lastInsertRowid }
-   */
   prepare(sql) {
     return {
-      /** Retorna a primeira linha encontrada (ou undefined se não encontrou) */
+
       get(...params) {
         const stmt = sqlDb.prepare(sql);
         try {
@@ -124,11 +78,10 @@ const db = {
           }
           return undefined;
         } finally {
-          stmt.free();  // Sempre libera a memória da statement
+          stmt.free();
         }
       },
 
-      /** Retorna todas as linhas encontradas como array de objetos */
       all(...params) {
         const stmt = sqlDb.prepare(sql);
         try {
@@ -147,22 +100,17 @@ const db = {
         }
       },
 
-      /** Executa INSERT/UPDATE/DELETE e retorna info sobre as mudanças */
       run(...params) {
         sqlDb.run(sql, params.length > 0 ? params : undefined);
-        const changes = sqlDb.getRowsModified();   // Número de linhas afetadas
-        const liResult = sqlDb.exec('SELECT last_insert_rowid()'); // ID da última inserção
+        const changes = sqlDb.getRowsModified();
+        const liResult = sqlDb.exec('SELECT last_insert_rowid()');
         const lastInsertRowid = liResult[0]?.values[0]?.[0] ?? 0;
-        saveDb();  // Salva no disco após cada escrita
+        saveDb();
         return { changes, lastInsertRowid };
       },
     };
   },
 };
-
-// ── Criação das tabelas do banco de dados ──────────────────────────
-// Executa CREATE TABLE IF NOT EXISTS para cada tabela.
-// Se a tabela já existe, nada acontece.
 
 db.exec(`
 -- ┌─────────────────────────────────────────────────────────────────┐
@@ -310,14 +258,6 @@ CREATE TABLE IF NOT EXISTS collection_messages (
 );
 `);
 
-// ── Seed: cria o usuário administrador padrão ──────────────────────
-// Se o admin não existe ainda, cria com os dados vindos de variáveis de
-// ambiente (.env) — NUNCA de valores fixos no código.
-//
-// Variáveis esperadas (veja .env.example):
-//   ADMIN_EMAIL  → e-mail de login do administrador
-//   ADMIN_PASSWORD → senha inicial (mínimo 6 caracteres)
-//   ADMIN_NAME   → nome exibido (opcional, padrão "Administrador")
 import bcrypt from 'bcryptjs';
 
 const adminEmail = requireEnv('ADMIN_EMAIL');
@@ -331,37 +271,29 @@ if (adminPassword.length < 6) {
 
 const existingAdmin = db.prepare('SELECT id FROM users WHERE email = ?').get(adminEmail);
 if (!existingAdmin) {
-  const adminHash = bcrypt.hashSync(adminPassword, 10); // Senha hasheada com 10 rounds de salt
+  const adminHash = bcrypt.hashSync(adminPassword, 10);
   db.prepare(
     `INSERT INTO users (name, cpf, email, phone, password_hash, role) VALUES (?, ?, ?, ?, ?, ?)`
   ).run(adminName, '00000000000', adminEmail, '', adminHash, 'admin');
   console.log(`✅ Usuário administrador criado (${adminEmail})`);
 }
 
-// ── Migrações: adiciona colunas que podem não existir ──────────────
-// Tenta executar ALTER TABLE; se a coluna já existe, ignora o erro
-
-// Adiciona a coluna "role" na tabela users (para diferenciar user de admin)
 try {
   db.exec(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'`);
 } catch {
-  // Coluna já existe, ignora silenciosamente
+
 }
 
-// Adiciona a coluna "is_approved" na tabela companies (controle de aprovação)
 try {
   db.exec(`ALTER TABLE companies ADD COLUMN is_approved INTEGER NOT NULL DEFAULT 0`);
 } catch {
-  // Coluna já existe, ignora silenciosamente
+
 }
 
-// Adiciona a coluna "rejected_by" na tabela collections: guarda os IDs (JSON array)
-// das empresas que RECUSARAM cada coleta. Assim a coleta recusada volta a ficar
-// disponível para as outras empresas, mas não é mais oferecida a quem recusou.
 try {
   db.exec(`ALTER TABLE collections ADD COLUMN rejected_by TEXT NOT NULL DEFAULT '[]'`);
 } catch {
-  // Coluna já existe, ignora silenciosamente
+
 }
 
 export default db;

@@ -1,3 +1,6 @@
+// Titulo: CompanyDashboard
+// Autor: Mateus Martins Peres
+// Finalidade: Pagina React responsavel por CompanyDashboard.
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
@@ -10,8 +13,7 @@ export default function CompanyDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  
-  // Collection requests state
+
   const [collections, setCollections] = useState([]);
   const [collectionsLoading, setCollectionsLoading] = useState(true);
 
@@ -19,7 +21,7 @@ export default function CompanyDashboard() {
     api('/collections/dashboard')
       .then((d) => setStats(d.dashboard))
       .catch((err) => {
-        // Se a empresa não está aprovada, redireciona pra tela de pendente
+
         if (err.message?.includes('não aprovada')) {
           navigate('/empresa/pendente');
         }
@@ -27,7 +29,6 @@ export default function CompanyDashboard() {
       .finally(() => setLoading(false));
   }, [navigate]);
 
-  // Load collection requests for this company's city
   useEffect(() => {
     setCollectionsLoading(true);
     api('/collections')
@@ -118,7 +119,7 @@ export default function CompanyDashboard() {
               {dateEntries.length === 0 ? (
                 <p className="text-xs text-stone-400">Nenhuma coleta agendada.</p>
               ) : (
-                /* Scroll horizontal no celular: barras não ficam espremidas com muitas datas */
+
                 <div className="overflow-x-auto no-scrollbar -mx-1 px-1">
                   <div className="flex items-end gap-2 h-44 min-w-full w-max">
                     {dateEntries.map(([date, count]) => (
@@ -139,7 +140,7 @@ export default function CompanyDashboard() {
             </div>
           </div>
 
-          {/* Collection Requests List */}
+          { }
           <div className="mt-5 bg-white rounded-xl border border-stone-100 p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-bold text-stone-800 text-sm flex items-center gap-1.5">
@@ -160,7 +161,7 @@ export default function CompanyDashboard() {
             ) : (
               <div className="space-y-2">
                 {collections.slice(0, 8).map((c) => (
-                  /* Empilhado no celular (evita quebra feia de linha); em linha no desktop */
+
                   <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg bg-stone-50 hover:bg-stone-100 transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-8 h-8 shrink-0 rounded-lg bg-[#f4f7f0] text-[#537236] flex items-center justify-center">

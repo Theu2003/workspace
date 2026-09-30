@@ -1,3 +1,6 @@
+// Titulo: Footer
+// Autor: Mateus Martins Peres
+// Finalidade: Componente React responsavel por Footer.
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { Phone, Mail, MapPin, Facebook, Instagram, Twitter } from './Icons';

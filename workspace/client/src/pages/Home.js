@@ -1,3 +1,6 @@
+// Titulo: Home
+// Autor: Mateus Martins Peres
+// Finalidade: Pagina React responsavel por Home.
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
@@ -27,7 +30,7 @@ export default function Home() {
 
   return (
     <div>
-      {/* Hero */}
+      { }
       <section className="bg-[#364a25] text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} />
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 grid lg:grid-cols-2 gap-10 items-center relative">
@@ -101,7 +104,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Como funciona */}
+      { }
       <section className="py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-lg">
@@ -127,7 +130,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Para quem quer reciclar / Para empresas */}
+      { }
       <section className="py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-lg mb-10">
@@ -167,7 +170,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA */}
+      { }
       <section className="py-16 bg-[#f4f7f0]">
         <div className="max-w-3xl mx-auto text-center px-4">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-stone-800">Bora reciclar?</h2>

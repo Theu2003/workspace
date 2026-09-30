@@ -1,3 +1,6 @@
+// Titulo: StatusBadge
+// Autor: Mateus Martins Peres
+// Finalidade: Componente React responsavel por StatusBadge.
 const STATUS_COLORS = {
   pendente: 'bg-amber-100 text-amber-800 border-amber-200',
   aceita: 'bg-blue-100 text-blue-800 border-blue-200',

@@ -1,13 +1,36 @@
+// Titulo: ScheduleCollection
+// Autor: Mateus Martins Peres
+// Finalidade: Pagina React responsavel por ScheduleCollection.
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { api } from '../api';
 import MapView from '../components/MapView';
 import AddressFields from '../components/AddressFields';
-import { Recycle, MapPin, Calendar, Clock, CheckCircle, Plus, Trash2 } from '../components/Icons';
+import { Recycle, MapPin, Calendar, Clock, CheckCircle, Plus, Trash2, Package, Leaf, ArrowRight, Truck } from '../components/Icons';
 
 const MATERIAL_OPTIONS = ['Papel', 'Papelão', 'Plástico', 'Vidro', 'Metal', 'Eletrônicos', 'Óleo de cozinha', 'Outros'];
 const PERIODS = ['08:00 às 12:00', '13:00 às 17:00', '18:00 às 20:00'];
+
+const inputClass = 'w-full px-3.5 py-2.5 rounded-xl border border-stone-200 bg-stone-50/60 focus:bg-white focus:border-[#6b8f47] focus:ring-2 focus:ring-[#c9d9b5]/40 outline-none transition-all text-sm';
+const cardClass = 'bg-white rounded-2xl border border-stone-200/70 shadow-[0_1px_3px_rgb(0_0_0/0.04),0_8px_24px_-16px_rgb(54_74_37/0.15)] p-5 sm:p-6';
+
+function StepHeader({ icon, step, title, subtitle }) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <div className="relative w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-[#537236] to-[#415a2b] text-white flex items-center justify-center shadow-[0_4px_12px_-4px_rgb(83_114_54/0.5)]">
+        {icon}
+        <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#e4ecda] text-[#415a2b] text-[10px] font-extrabold flex items-center justify-center ring-2 ring-white">
+          {step}
+        </span>
+      </div>
+      <div>
+        <h2 className="font-bold text-stone-800 text-[15px] leading-tight">{title}</h2>
+        <p className="text-xs text-stone-400">{subtitle}</p>
+      </div>
+    </div>
+  );
+}
 
 export default function ScheduleCollection() {
   const { user } = useAuth();
@@ -28,10 +51,7 @@ export default function ScheduleCollection() {
   const [editForm, setEditForm] = useState({});
   const [editLoading, setEditLoading] = useState(false);
 
-  // Ajuste manual de localização: coordenadas escolhidas no mapa interativo
-  // (ainda não salvas no servidor) por endereço
-  const [pickedCoords, setPickedCoords] = useState({});
-  const [savingLocation, setSavingLocation] = useState(false);
+  const [editCoords, setEditCoords] = useState(null);
   const [locationToast, setLocationToast] = useState('');
 
   useEffect(() => {
@@ -53,20 +73,30 @@ export default function ScheduleCollection() {
       number: addr.number,
       complement: addr.complement || ''
     });
+
+    setEditCoords(
+      addr.latitude && addr.longitude
+        ? { latitude: addr.latitude, longitude: addr.longitude }
+        : null
+    );
   }
 
   function cancelEdit() {
     setEditingAddress(null);
     setEditForm({});
+    setEditCoords(null);
   }
 
   async function saveEditAddress() {
     if (!editingAddress) return;
     setEditLoading(true);
     try {
+      const body = editCoords
+        ? { ...editForm, latitude: editCoords.latitude, longitude: editCoords.longitude }
+        : editForm;
       const data = await api(`/users/addresses/${editingAddress}`, {
         method: 'PUT',
-        body: JSON.stringify(editForm)
+        body: JSON.stringify(body)
       });
       setAddresses((prev) => prev.map((a) => a.id === editingAddress ? { ...a, ...data.address } : a));
       cancelEdit();
@@ -83,6 +113,7 @@ export default function ScheduleCollection() {
   }
 
   const currentAddress = addresses.find((a) => a.id === selectedAddress);
+  const editingAddressObj = addresses.find((a) => a.id === editingAddress);
 
   function addMaterial() {
     setMaterials((prev) => [...prev, { type: '', quantity: 0 }]);
@@ -96,33 +127,42 @@ export default function ScheduleCollection() {
     setMaterials((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  // Coordenadas efetivas do endereço: prioriza o ajuste manual feito no mapa
-  const effectiveCoords = currentAddress
-    ? pickedCoords[currentAddress.id] ??
-      (currentAddress.latitude && currentAddress.longitude
-        ? { latitude: currentAddress.latitude, longitude: currentAddress.longitude }
-        : null)
-    : null;
-
-  const mapMarkers = effectiveCoords
+  const editMapMarkers = editCoords
     ? [{
-        latitude: effectiveCoords.latitude,
-        longitude: effectiveCoords.longitude,
-        label: 'Seu endereço',
-        popup: (
-          <div>
-            <strong>{currentAddress.label}</strong>
-            <p>{currentAddress.street}, {currentAddress.number} - {currentAddress.neighborhood}</p>
-            <p>{currentAddress.city}/{currentAddress.state} · CEP {currentAddress.cep}</p>
-          </div>
-        )
+        latitude: editCoords.latitude,
+        longitude: editCoords.longitude,
+        label: 'Seu endereço'
       }]
-    : [];
+    : editingAddressObj && editingAddressObj.latitude && editingAddressObj.longitude
+      ? [{
+          latitude: editingAddressObj.latitude,
+          longitude: editingAddressObj.longitude,
+          label: editingAddressObj.label || 'Seu endereço'
+        }]
+      : [];
+
+  function formatDateBR(iso) {
+    if (!iso) return 'Escolha';
+    return new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short'
+    });
+  }
+
+  const validMaterials = materials.filter((m) => m.type && Number(m.quantity) > 0);
+  const totalKg = validMaterials.reduce((sum, m) => sum + Number(m.quantity || 0), 0);
+
+  function isTomorrow(iso) {
+    if (!iso) return false;
+    const t = new Date();
+    t.setDate(t.getDate() + 1);
+    return iso === t.toISOString().split('T')[0];
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
-    const validMaterials = materials.filter((m) => m.type && Number(m.quantity) > 0);
     if (validMaterials.length === 0) {
       setError('Adicione ao menos um material com quantidade');
       return;
@@ -160,58 +200,54 @@ export default function ScheduleCollection() {
     }
   }
 
-  /**
-   * Salva no servidor a posição escolhida no mapa para o endereço atual.
-   * A API recalcula o geocode quando os campos de endereço mudam, então
-   * enviamos os mesmos dados do endereço + as coordenadas capturadas.
-   */
   async function savePickedLocation() {
-    if (!currentAddress || !pickedCoords[currentAddress.id] || savingLocation) return;
-    setSavingLocation(true);
+    if (!currentAddress || !editCoords || editLoading) return;
+    setEditLoading(true);
     try {
-      const coords = pickedCoords[currentAddress.id];
+      const body = {
+        label: currentAddress.label,
+        cep: currentAddress.cep,
+        state: currentAddress.state,
+        city: currentAddress.city,
+        neighborhood: currentAddress.neighborhood,
+        street: currentAddress.street,
+        number: currentAddress.number,
+        complement: currentAddress.complement || '',
+        latitude: editCoords.latitude,
+        longitude: editCoords.longitude
+      };
       const d = await api(`/users/addresses/${currentAddress.id}`, {
         method: 'PUT',
-        body: JSON.stringify({
-          label: currentAddress.label,
-          cep: currentAddress.cep,
-          state: currentAddress.state,
-          city: currentAddress.city,
-          neighborhood: currentAddress.neighborhood,
-          street: currentAddress.street,
-          number: currentAddress.number,
-          complement: currentAddress.complement || '',
-          latitude: coords.latitude,
-          longitude: coords.longitude
-        })
+        body: JSON.stringify(body)
       });
       setAddresses((prev) => prev.map((a) => (a.id === currentAddress.id ? { ...a, ...d.address } : a)));
-      setPickedCoords((prev) => {
-        const next = { ...prev };
-        delete next[currentAddress.id];
-        return next;
-      });
       setLocationToast('Localização salva com sucesso!');
       setTimeout(() => setLocationToast(''), 3000);
     } catch (err) {
       setLocationToast(err.message || 'Erro ao salvar localização');
       setTimeout(() => setLocationToast(''), 4000);
     } finally {
-      setSavingLocation(false);
+      setEditLoading(false);
     }
   }
 
   if (success) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <div className="text-center max-w-sm">
-          <div className="w-16 h-16 mx-auto rounded-full bg-[#e4ecda] text-[#4a6741] flex items-center justify-center">
-            <CheckCircle className="w-8 h-8" />
+      <div className="min-h-[70vh] flex items-center justify-center px-4 bg-[#faf8f5]">
+        <div className="text-center max-w-sm bg-white rounded-3xl border border-stone-200/70 shadow-[0_20px_60px_-20px_rgb(54_74_37/0.25)] p-10">
+          <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-[#e4ecda] to-[#c9d9b5] text-[#415a2b] flex items-center justify-center animate-bounce">
+            <CheckCircle className="w-10 h-10" />
           </div>
-          <h2 className="mt-5 text-xl font-bold text-stone-800">Coleta solicitada!</h2>
-          <p className="mt-2 text-sm text-stone-500">Uma empresa vai ser notificada. Acompanhe em "Minhas Coletas".</p>
-          <Link to="/minhas-coletas" className="mt-5 inline-block px-5 py-2.5 rounded-xl bg-[#4a6741] text-white font-semibold hover:bg-[#364a25] transition-colors text-sm">
-            Ver minhas coletas
+          <h2 className="mt-6 text-2xl font-extrabold text-stone-800">Coleta solicitada!</h2>
+          <p className="mt-2 text-sm text-stone-500 leading-relaxed">
+            Empresas da sua região foram notificadas.<br />
+            Você será redirecionado em instantes...
+          </p>
+          <div className="mt-5 h-1.5 w-full rounded-full bg-stone-100 overflow-hidden">
+            <div className="h-full w-1/3 rounded-full bg-gradient-to-r from-[#6b8f47] to-[#84a55e] animate-pulse" />
+          </div>
+          <Link to="/minhas-coletas" className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#4a6741] text-white font-semibold hover:bg-[#364a25] transition-all shadow-[0_4px_14px_-4px_rgb(74_103_65/0.5)] text-sm">
+            Ver minhas coletas <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </div>
@@ -219,13 +255,21 @@ export default function ScheduleCollection() {
   }
 
   return (
-    <div className="bg-[#faf8f5] py-8 px-4 sm:px-6 lg:px-8">
+    <div className="bg-gradient-to-b from-[#f4f7f0]/60 to-[#faf8f5] py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-extrabold text-stone-800">Agendar Coleta</h1>
-          <p className="mt-1 text-sm text-stone-500">Solicite a coleta dos seus recicláveis em poucos passos</p>
+        <div className="mb-7">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#537236] to-[#364a25] text-white flex items-center justify-center shadow-[0_6px_16px_-6px_rgb(83_114_54/0.6)]">
+              <Recycle className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-extrabold text-stone-800 tracking-tight">Agendar Coleta</h1>
+              <p className="text-sm text-stone-500">Solicite a coleta dos seus recicláveis em 4 passos</p>
+            </div>
+          </div>
           {welcome && (
-            <div className="mt-3 bg-[#f4f7f0] border border-[#e4ecda] text-[#364a25] rounded-xl px-3 py-2.5 text-sm font-medium">
+            <div className="mt-4 bg-gradient-to-r from-[#f4f7f0] to-[#eef4e6] border border-[#c9d9b5] text-[#364a25] rounded-2xl px-4 py-3 text-sm font-medium flex items-center gap-2.5">
+              <Leaf className="w-4 h-4 shrink-0" />
               Bem-vindo(a), {user?.name?.split(' ')[0]}! Agende sua primeira coleta agora.
             </div>
           )}
@@ -234,183 +278,234 @@ export default function ScheduleCollection() {
         <form onSubmit={handleSubmit}>
           <div className="grid lg:grid-cols-2 gap-5">
             <div className="space-y-5">
-              <section className="bg-white rounded-xl border border-stone-100 p-5">
-                <div className="flex items-center gap-2.5 mb-3">
-                  <div className="w-9 h-9 rounded-lg bg-[#f4f7f0] text-[#537236] flex items-center justify-center"><Recycle className="w-4 h-4" /></div>
-                  <div>
-                    <h2 className="font-semibold text-stone-800 text-sm">Materiais</h2>
-                    <p className="text-xs text-stone-400">Selecione o tipo e a quantidade</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
+              <section className={cardClass}>
+                <StepHeader icon={<Recycle className="w-5 h-5" />} step={1} title="Materiais" subtitle="O que você quer descartar?" />
+                <div className="space-y-2.5">
                   {materials.map((m, idx) => (
-                    <div key={idx} className="flex gap-2">
+                    <div key={idx} className="flex gap-2 items-stretch">
                       <select
                         value={m.type}
                         onChange={(e) => updateMaterial(idx, 'type', e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-lg border border-stone-200 focus:border-[#6b8f47] outline-none text-sm bg-white"
+                        className={`${inputClass} flex-1 appearance-none bg-[url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2378716c' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='m19.5 8.25-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E")] bg-no-repeat bg-[right_0.75rem_center] pr-9`}
                       >
-                        <option value="">Material</option>
+                        <option value="">Selecione o material</option>
                         {MATERIAL_OPTIONS.map((opt) => (
                           <option key={opt} value={opt}>{opt}</option>
                         ))}
                       </select>
-                      <div className="relative w-24">
+                      <div className="relative w-24 shrink-0">
                         <input
                           type="number"
                           min="1"
                           placeholder="Qtd"
                           value={m.quantity || ''}
                           onChange={(e) => updateMaterial(idx, 'quantity', Number(e.target.value))}
-                          className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:border-[#6b8f47] outline-none text-sm"
+                          className={`${inputClass} pr-7`}
                         />
-                        <span className="absolute right-2 top-2 text-xs text-stone-400">kg</span>
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none font-medium">kg</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => removeMaterial(idx)}
                         disabled={materials.length === 1}
-                        className="w-9 h-9 rounded-lg bg-red-50 text-red-400 flex items-center justify-center disabled:opacity-25 hover:bg-red-100 transition-colors"
+                        className="w-11 shrink-0 rounded-xl bg-red-50 text-red-400 flex items-center justify-center disabled:opacity-30 hover:bg-red-100 hover:text-red-600 active:scale-95 transition-all border border-red-100/60"
                         aria-label="Remover material"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   ))}
                 </div>
-                <button type="button" onClick={addMaterial} className="mt-2.5 inline-flex items-center gap-1 text-xs font-semibold text-[#6b8f47] hover:text-[#537236]">
-                  <Plus className="w-3.5 h-3.5" /> Adicionar material
+                {validMaterials.length > 0 && (
+                  <div className="mt-3 flex items-center gap-2 text-xs font-medium text-[#415a2b] bg-[#f4f7f0] rounded-xl px-3 py-2">
+                    <Package className="w-3.5 h-3.5" />
+                    {validMaterials.length} tipo(s) · ~{totalKg} kg no total
+                  </div>
+                )}
+                <button type="button" onClick={addMaterial} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-[#6b8f47] hover:text-[#537236] hover:gap-2.5 transition-all">
+                  <span className="w-5 h-5 rounded-full bg-[#e4ecda] flex items-center justify-center"><Plus className="w-3 h-3" /></span>
+                  Adicionar outro material
                 </button>
               </section>
 
-              <section className="bg-white rounded-xl border border-stone-100 p-5">
-                <div className="flex items-center gap-2.5 mb-3">
-                  <div className="w-9 h-9 rounded-lg bg-[#f4f7f0] text-[#537236] flex items-center justify-center"><Calendar className="w-4 h-4" /></div>
+              <section className={cardClass}>
+                <StepHeader icon={<Calendar className="w-5 h-5" />} step={2} title="Data e horário" subtitle="Quando podemos passar aí?" />
+                <div className="grid sm:grid-cols-2 gap-3">
                   <div>
-                    <h2 className="font-semibold text-stone-800 text-sm">Data e horário</h2>
-                    <p className="text-xs text-stone-400">Quando quer receber a coleta</p>
+                    <label className="block text-xs font-semibold text-stone-600 mb-1.5 uppercase tracking-wide">Data</label>
+                    <input
+                      type="date"
+                      min={new Date().toISOString().split('T')[0]}
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className={inputClass}
+                    />
+                    {isTomorrow(date) && (
+                      <p className="mt-1.5 text-[11px] font-medium text-amber-600">⚡ Coleta para amanhã — empresas podem demorar a aceitar</p>
+                    )}
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1">Data</label>
-                  <input
-                    type="date"
-                    min={new Date().toISOString().split('T')[0]}
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg border border-stone-200 focus:border-[#6b8f47] focus:ring-1 focus:ring-[#c9d9b5] outline-none text-sm"
-                  />
-                </div>
-
-                <div className="mt-3">
-                  <label className="block text-sm font-medium text-stone-700 mb-1.5">Período</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {PERIODS.map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setPeriod(p)}
-                        className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-                          period === p
-                            ? 'bg-[#4a6741] border-[#4a6741] text-white'
-                            : 'bg-white border-stone-200 text-stone-600 hover:border-[#a6bf87]'
-                        }`}
-                      >
-                        <Clock className="w-3.5 h-3.5" /> {p}
-                      </button>
-                    ))}
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-600 mb-1.5 uppercase tracking-wide">Período</label>
+                    <div className="grid grid-cols-1 gap-1.5">
+                      {PERIODS.map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setPeriod(p)}
+                          className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-semibold transition-all active:scale-[0.98] ${
+                            period === p
+                              ? 'bg-[#4a6741] border-[#4a6741] text-white shadow-[0_4px_12px_-4px_rgb(74_103_65/0.5)]'
+                              : 'bg-stone-50/60 border-stone-200 text-stone-600 hover:border-[#a6bf87] hover:bg-[#f4f7f0]/60'
+                          }`}
+                        >
+                          <Clock className="w-3.5 h-3.5" /> {p}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </section>
 
-              <section className="bg-white rounded-xl border border-stone-100 p-5">
-                <h2 className="font-semibold text-stone-800 text-sm mb-2">Observações</h2>
+              <section className={cardClass}>
+                <StepHeader icon={<Package className="w-5 h-5" />} step={3} title="Observações" subtitle="Algo que a empresa deva saber?" />
                 <textarea
                   value={observations}
                   onChange={(e) => setObservations(e.target.value)}
                   rows={3}
-                  placeholder="Ex.: Os materiais vão estar na garagem."
-                  className="w-full px-3 py-2.5 rounded-lg border border-stone-200 focus:border-[#6b8f47] focus:ring-1 focus:ring-[#c9d9b5] outline-none text-sm resize-none"
+                  placeholder="Ex.: Os materiais vão estar na garagem, portão azul."
+                  className={`${inputClass} resize-none leading-relaxed`}
                 />
               </section>
             </div>
 
             <div className="space-y-5">
-              <section className="bg-white rounded-xl border border-stone-100 p-5">
-                <div className="flex items-center gap-2.5 mb-3">
-                  <div className="w-9 h-9 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center"><MapPin className="w-4 h-4" /></div>
-                  <div>
-                    <h2 className="font-semibold text-stone-800 text-sm">Endereço da coleta</h2>
-                    <p className="text-xs text-stone-400">Onde a empresa vai buscar</p>
-                  </div>
-                </div>
-
+              <section className={cardClass}>
+                <StepHeader icon={<MapPin className="w-5 h-5" />} step={4} title="Endereço da coleta" subtitle="Onde vamos buscar os materiais" />
                 {addresses.length === 0 ? (
-                  <div className="text-center py-5">
-                    <p className="text-sm text-stone-400 mb-2">Nenhum endereço cadastrado.</p>
-                    <Link to="/perfil" className="text-xs font-semibold text-[#6b8f47] hover:underline">Adicionar no perfil</Link>
+                  <div className="text-center py-6 bg-[#f4f7f0]/50 rounded-2xl border border-dashed border-[#c9d9b5]">
+                    <div className="w-12 h-12 mx-auto rounded-2xl bg-[#e4ecda] text-[#537236] flex items-center justify-center mb-2">
+                      <MapPin className="w-5 h-5" />
+                    </div>
+                    <p className="text-sm text-stone-500 mb-3">Nenhum endereço cadastrado.</p>
+                    <Link to="/perfil" className="inline-block text-xs font-bold text-[#6b8f47] bg-white border border-[#c9d9b5] rounded-full px-4 py-1.5 hover:bg-[#f4f7f0] transition-colors">Adicionar no perfil</Link>
                   </div>
                 ) : (
                   <>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       {addresses.map((a) => (
                         <div key={a.id}>
-                          <button
-                            type="button"
+                          <div
+                            role="button"
+                            tabIndex={0}
                             onClick={() => setSelectedAddress(a.id)}
-                            className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors ${
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedAddress(a.id); }}
+                            className={`w-full text-left px-3.5 py-3 rounded-xl border-2 transition-all cursor-pointer ${
                               selectedAddress === a.id
-                                ? 'border-[#6b8f47] bg-[#f4f7f0]'
-                                : 'border-stone-200 hover:border-[#c9d9b5]'
+                                ? 'border-[#6b8f47] bg-[#f4f7f0] shadow-[0_2px_10px_-4px_rgb(83_114_54/0.35)]'
+                                : 'border-stone-200 hover:border-[#c9d9b5] bg-white'
                             }`}
                           >
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-semibold text-stone-800">{a.label}</span>
-                              <div className="flex items-center gap-1.5">
-                                {a.is_default === 1 && <span className="text-[10px] font-bold text-[#537236] bg-[#e4ecda] px-1.5 py-0.5 rounded-full">PADRÃO</span>}
-                                {selectedAddress === a.id && editingAddress !== a.id && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); startEditAddress(a); }}
-                                    className="text-xs font-medium text-blue-600 hover:text-blue-800 px-1.5 py-0.5 rounded bg-blue-50 hover:bg-blue-100 transition-colors"
-                                  >
-                                    Editar
-                                  </button>
-                                )}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className={`w-4 h-4 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${selectedAddress === a.id ? 'border-[#537236] bg-[#537236]' : 'border-stone-300'}`}>
+                                  {selectedAddress === a.id && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                </span>
+                                <span className="text-sm font-bold text-stone-800 truncate">{a.label}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {a.is_default === 1 && <span className="text-[10px] font-extrabold text-[#537236] bg-[#e4ecda] px-2 py-0.5 rounded-full">PADRÃO</span>}
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); startEditAddress(a); }}
+                                  className="text-xs font-semibold text-stone-500 hover:text-[#537236] hover:bg-[#e4ecda]/60 px-2 py-0.5 rounded-full transition-colors"
+                                >
+                                  Editar
+                                </button>
                               </div>
                             </div>
-                            <p className="text-xs text-stone-500 mt-0.5">
+                            <p className="text-xs text-stone-600 mt-1 ml-6">
                               {a.street}, {a.number} - {a.neighborhood}, {a.city}/{a.state}
                             </p>
-                            <p className="text-[11px] text-stone-400">CEP {a.cep}{a.complement && ` · ${a.complement}`}</p>
-                          </button>
+                            <p className="text-[11px] text-stone-400 ml-6">CEP {a.cep}{a.complement && ` · ${a.complement}`}</p>
+                          </div>
 
                           {selectedAddress === a.id && editingAddress === a.id && (
-                            <div className="mt-2 p-3.5 rounded-lg bg-blue-50 border border-blue-200 space-y-2.5">
+                            <div className="mt-2 p-4 rounded-2xl bg-gradient-to-b from-[#eef4fb] to-white border-2 border-blue-200/70 space-y-3 shadow-inner">
                               <div className="flex items-center justify-between">
-                                <span className="text-sm font-semibold text-blue-800">Editar endereço</span>
-                                <button type="button" onClick={cancelEdit} className="text-xs font-medium text-stone-500 hover:text-stone-700">
+                                <span className="text-sm font-bold text-blue-900">Editar endereço</span>
+                                <button type="button" onClick={cancelEdit} className="text-xs font-semibold text-stone-500 hover:text-stone-800 transition-colors">
                                   Cancelar
                                 </button>
                               </div>
                               <div>
-                                <label className="block text-xs font-medium text-stone-600 mb-0.5">Nome</label>
+                                <label className="block text-xs font-semibold text-stone-600 mb-1">Nome do endereço</label>
                                 <input
-                                  className="w-full px-2.5 py-1.5 rounded-lg border border-stone-200 focus:border-blue-500 outline-none text-sm"
+                                  className={inputClass}
                                   value={editForm.label || ''}
                                   onChange={(e) => setEditForm((f) => ({ ...f, label: e.target.value }))}
                                 />
                               </div>
                               <AddressFields values={editForm} onChange={(field, value) => setEditForm((f) => ({ ...f, [field]: value }))} />
+
+                              <div className="pt-1">
+                                <div className="mb-2 flex items-center justify-between">
+                                  <span className="text-xs font-bold text-stone-600">Ajustar localização no mapa</span>
+                                  <span className="text-[10px] font-medium text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">opcional</span>
+                                </div>
+                                {editCoords ? (
+                                  <div className="mb-2 flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={savePickedLocation}
+                                      disabled={editLoading}
+                                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-[#4a6741] text-white text-xs font-bold hover:bg-[#364a25] transition-colors disabled:opacity-60"
+                                    >
+                                      <CheckCircle className="w-3.5 h-3.5" />
+                                      {editLoading ? 'Salvando...' : 'Salvar esta localização'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditCoords(
+                                        editingAddressObj?.latitude && editingAddressObj?.longitude
+                                          ? { latitude: editingAddressObj.latitude, longitude: editingAddressObj.longitude }
+                                          : null
+                                      )}
+                                      className="px-3 py-2 rounded-xl bg-stone-100 text-stone-600 text-xs font-semibold hover:bg-stone-200 transition-colors"
+                                    >
+                                      Desfazer
+                                    </button>
+                                  </div>
+                                ) : null}
+                                <MapView
+                                  markers={editMapMarkers}
+                                  center={
+                                    editCoords
+                                      ? [editCoords.latitude, editCoords.longitude]
+                                      : editingAddressObj?.latitude && editingAddressObj?.longitude
+                                        ? [editingAddressObj.latitude, editingAddressObj.longitude]
+                                        : undefined
+                                  }
+                                  height="220px"
+                                  onPositionChange={(lat, lng) =>
+                                    setEditCoords({ latitude: lat, longitude: lng })
+                                  }
+                                />
+                                <p className="text-[11px] text-stone-400 mt-1.5 leading-relaxed">
+                                  {editCoords
+                                    ? '📍 Posição ajustada! Salve para confirmar o ponto de coleta.'
+                                    : 'Clique no mapa ou arraste o pin para ajustar o ponto de coleta.'}
+                                  <br />
+                                  Se não ajustar, usamos a localização aproximada do CEP.
+                                </p>
+                              </div>
+
                               <button
                                 type="button"
                                 onClick={saveEditAddress}
                                 disabled={editLoading}
-                                className="w-full py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-[0_4px_12px_-4px_rgb(37_99_235/0.5)]"
                               >
-                                {editLoading ? 'Salvando...' : 'Salvar'}
+                                {editLoading ? 'Salvando...' : 'Salvar endereço'}
                               </button>
                             </div>
                           )}
@@ -419,85 +514,56 @@ export default function ScheduleCollection() {
                     </div>
 
                     {currentAddress && (
-                      <div className="mt-3.5">
-                        <div className="mb-1.5 flex items-center justify-between">
-                          <span className="text-xs font-semibold text-stone-600">Localização no mapa</span>
-                          <span className="text-[11px] text-stone-400">{currentAddress.neighborhood}</span>
-                        </div>
-                        <MapView
-                          markers={mapMarkers}
-                          center={effectiveCoords ? [effectiveCoords.latitude, effectiveCoords.longitude] : undefined}
-                          height="260px"
-                          onPositionChange={(lat, lng) =>
-                            setPickedCoords((prev) => ({
-                              ...prev,
-                              [currentAddress.id]: { latitude: lat, longitude: lng }
-                            }))
-                          }
-                        />
-                        {!effectiveCoords && (
-                          <p className="text-[11px] text-amber-600 mt-1.5">
-                            Localização aproximada indisponível. Clique no mapa para marcar o ponto de coleta.
-                          </p>
-                        )}
-                        {pickedCoords[currentAddress.id] ? (
-                          <div className="mt-2.5 flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={savePickedLocation}
-                              disabled={savingLocation}
-                              className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-[#4a6741] text-white text-xs font-semibold hover:bg-[#364a25] transition-colors disabled:opacity-60"
-                            >
-                              <CheckCircle className="w-3.5 h-3.5" />
-                              {savingLocation ? 'Salvando...' : 'Salvar esta localização'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setPickedCoords((prev) => {
-                                const next = { ...prev };
-                                delete next[currentAddress.id];
-                                return next;
-                              })}
-                              className="px-3 py-2 rounded-lg bg-stone-100 text-stone-600 text-xs font-semibold hover:bg-stone-200 transition-colors"
-                            >
-                              Desfazer
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => openGoogleMaps(currentAddress)}
-                            className="mt-2.5 w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-stone-800 text-white text-xs font-semibold hover:bg-stone-700 transition-colors"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                            Abrir no Google Maps
-                          </button>
-                        )}
-                      </div>
+                      <p className="text-[11px] text-stone-400 mt-3">
+                        Endereço errado? Toque em "Editar" acima para corrigir ou ajustar o pin no mapa.
+                      </p>
                     )}
                   </>
                 )}
               </section>
 
-              {error && <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2.5">{error}</div>}
+              {error && (
+                <div className="text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-start gap-2">
+                  <span className="shrink-0 mt-0.5">⚠️</span>
+                  {error}
+                </div>
+              )}
               {locationToast && (
-                <div className="text-sm text-[#364a25] bg-[#f4f7f0] border border-[#e4ecda] rounded-lg px-3 py-2.5">{locationToast}</div>
+                <div className="text-sm font-medium text-[#364a25] bg-[#f4f7f0] border border-[#c9d9b5] rounded-2xl px-4 py-3">{locationToast}</div>
               )}
 
-              <div className="bg-[#364a25] text-white rounded-xl p-5">
-                <h3 className="font-bold text-sm">Resumo</h3>
-                <div className="mt-2.5 space-y-1 text-xs">
-                  <p><span className="text-white/50">Materiais:</span> {materials.filter((m) => m.type).length || 0} tipo(s)</p>
-                  <p><span className="text-white/50">Endereço:</span> {currentAddress ? `${currentAddress.street}, ${currentAddress.number}` : 'Selecione'}</p>
-                  <p><span className="text-white/50">Data:</span> {date ? new Date(`${date}T12:00:00`).toLocaleDateString('pt-BR') : 'Escolha'}</p>
-                  <p><span className="text-white/50">Período:</span> {period || 'Escolha'}</p>
+              <div className="rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-[#415a2b] to-[#2d3e20] text-white shadow-[0_16px_40px_-16px_rgb(45_62_32/0.6)]">
+                <h3 className="font-bold text-sm flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-[#c9d9b5]" /> Resumo da coleta
+                </h3>
+                <div className="mt-4 space-y-2.5 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-white/50 text-xs font-medium uppercase tracking-wide">Materiais</span>
+                    <span className="font-semibold text-right">{validMaterials.length > 0 ? `${validMaterials.length} tipo(s) · ~${totalKg} kg` : '—'}</span>
+                  </div>
+                  <div className="h-px bg-white/10" />
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-white/50 text-xs font-medium uppercase tracking-wide">Endereço</span>
+                    <span className="font-semibold text-right truncate">{currentAddress ? `${currentAddress.street}, ${currentAddress.number}` : '—'}</span>
+                  </div>
+                  <div className="h-px bg-white/10" />
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-white/50 text-xs font-medium uppercase tracking-wide">Data</span>
+                    <span className="font-semibold text-right">{formatDateBR(date)}</span>
+                  </div>
+                  <div className="h-px bg-white/10" />
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-white/50 text-xs font-medium uppercase tracking-wide">Período</span>
+                    <span className="font-semibold text-right">{period || '—'}</span>
+                  </div>
                 </div>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-4 w-full py-3 min-h-12 rounded-lg bg-white text-[#364a25] font-bold hover:bg-stone-50 transition-colors disabled:opacity-60"
+                  className="mt-5 w-full py-3.5 min-h-12 rounded-xl bg-white text-[#2d3e20] font-extrabold hover:bg-[#f4f7f0] active:scale-[0.99] transition-all disabled:opacity-60 shadow-lg flex items-center justify-center gap-2 group"
                 >
-                  {loading ? 'Solicitando...' : 'Solicitar Coleta'}
+                  {loading ? 'Solicitando...' : 'Confirmar coleta'}
+                  {!loading && <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />}
                 </button>
               </div>
             </div>

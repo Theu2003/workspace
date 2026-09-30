@@ -1,3 +1,6 @@
+// Titulo: UserDashboard
+// Autor: Mateus Martins Peres
+// Finalidade: Pagina React responsavel por UserDashboard.
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';

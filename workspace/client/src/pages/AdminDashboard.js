@@ -1,3 +1,6 @@
+// Titulo: AdminDashboard
+// Autor: Mateus Martins Peres
+// Finalidade: Pagina React responsavel por AdminDashboard.
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
@@ -14,8 +17,7 @@ export default function AdminDashboard() {
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('pending');
-  
-  // Messages state
+
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -74,7 +76,7 @@ export default function AdminDashboard() {
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation) return;
-    
+
     setSendingMessage(true);
     try {
       await api('/messages', {
@@ -201,7 +203,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Tabs — deslizáveis no celular, sem barra de rolagem visível */}
+        { }
         <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
           {tabs.map((tab) => (
             <button
@@ -226,7 +228,7 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Pending Companies Tab */}
+        { }
         {activeTab === 'pending' && (
           <div className="grid lg:grid-cols-3 gap-5">
             <div className="lg:col-span-1">
@@ -356,7 +358,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Approved Companies Tab */}
+        { }
         {activeTab === 'approved' && (
           <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
             <div className="p-3.5 border-b border-stone-100 bg-[#f4f7f0]">
@@ -421,7 +423,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Messages Tab */}
+        { }
         {activeTab === 'messages' && (
           <div className="grid lg:grid-cols-3 gap-5">
             <div className="lg:col-span-1">
@@ -475,7 +477,7 @@ export default function AdminDashboard() {
                       {conversations.find(c => c.company_id === selectedConversation)?.company_name}
                     </h3>
                   </div>
-                  
+
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
                     {messages.map((msg) => (
                       <div
@@ -531,7 +533,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Users Tab */}
+        { }
         {activeTab === 'users' && (
           <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
             <div className="p-3.5 border-b border-stone-100 bg-purple-50">
