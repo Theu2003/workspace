@@ -66,27 +66,27 @@ export default function RegisterCompany() {
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-stone-700 mb-1">Nome da empresa</label>
-                <input className={inputClass} placeholder="Recicla Fácil Coletas LTDA" value={form.name} required onChange={(e) => setField('name', e.target.value)} />
+                <input className={inputClass} value={form.name} required onChange={(e) => setField('name', e.target.value)} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-stone-700 mb-1">CNPJ</label>
-                <input className={inputClass} placeholder="00.000.000/0000-00" value={form.cnpj} required onChange={(e) => setField('cnpj', e.target.value.replace(/\D/g, '').slice(0, 14))} />
+                <input className={inputClass} value={form.cnpj} required onChange={(e) => setField('cnpj', e.target.value.replace(/\D/g, '').slice(0, 14))} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-stone-700 mb-1">Responsável</label>
-                <input className={inputClass} placeholder="Carlos Pereira" value={form.responsible} required onChange={(e) => setField('responsible', e.target.value)} />
+                <input className={inputClass} value={form.responsible} required onChange={(e) => setField('responsible', e.target.value)} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-stone-700 mb-1">E-mail</label>
-                <input type="email" className={inputClass} placeholder="contato@empresa.com" value={form.email} required onChange={(e) => setField('email', e.target.value)} />
+                <input type="email" className={inputClass} value={form.email} required onChange={(e) => setField('email', e.target.value)} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-stone-700 mb-1">Telefone</label>
-                <input className={inputClass} placeholder="(11) 99999-9999" value={form.phone} required onChange={(e) => setField('phone', e.target.value)} />
+                <input className={inputClass} value={form.phone} required onChange={(e) => setField('phone', e.target.value)} />
               </div>
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-stone-700 mb-1">Senha</label>
-                <input type="password" className={inputClass} placeholder="Mínimo 6 caracteres" value={form.password} required minLength={6} onChange={(e) => setField('password', e.target.value)} />
+                <input type="password" className={inputClass} value={form.password} required minLength={6} onChange={(e) => setField('password', e.target.value)} />
               </div>
             </div>
 

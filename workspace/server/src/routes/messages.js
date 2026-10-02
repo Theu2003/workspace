@@ -4,6 +4,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authMiddleware, requireRole } from '../auth.js';
+import { notifyCompany } from '../helpers.js';
 
 const router = Router();
 router.use(authMiddleware);
@@ -123,6 +124,13 @@ router.post('/', (req, res) => {
       INSERT INTO messages (sender_type, sender_id, receiver_type, receiver_id, message)
       VALUES (?, ?, ?, ?, ?)
     `).run(senderType, senderId, receiverType, receiverId, message.trim());
+
+    // Notifica a empresa quando o admin envia uma mensagem (nao exige resposta)
+    if (senderType === 'admin') {
+      const adminName = db.prepare('SELECT name FROM users WHERE id = ?').get(req.auth.id);
+      const from = adminName?.name ? adminName.name.split(' ')[0] : 'Administração';
+      notifyCompany(receiverId, 'mensagem_admin', `Mensagem da administração (${from}): ${message.trim()}`);
+    }
 
     res.status(201).json({
       id: result.lastInsertRowid,

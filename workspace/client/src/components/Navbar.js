@@ -17,12 +17,12 @@ export default function Navbar() {
   const isAdmin = role === 'admin';
 
   const userLinks = [
-    { to: '/dashboard', label: 'Dashboard' },
+    { to: '/dashboard', label: 'Painel' },
     { to: '/agendar-coleta', label: 'Agendar Coleta' },
     { to: '/minhas-coletas', label: 'Minhas Coletas' }
   ];
   const companyLinks = [
-    { to: '/empresa/dashboard', label: 'Dashboard' },
+    { to: '/empresa/dashboard', label: 'Painel' },
     { to: '/empresa/mapa', label: 'Mapa de Coletas' },
     { to: '/empresa/agenda', label: 'Agenda' }
   ];

@@ -160,7 +160,7 @@ export default function Home() {
                 <li className="flex gap-2.5"><CheckCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#6b8f47]" /> Visualize endereços no mapa</li>
                 <li className="flex gap-2.5"><CheckCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#6b8f47]" /> Filtre por data, cidade e material</li>
                 <li className="flex gap-2.5"><CheckCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#6b8f47]" /> Planeje rotas de coleta fácil</li>
-                <li className="flex gap-2.5"><CheckCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#6b8f47]" /> Dashboard e agenda completos</li>
+                <li className="flex gap-2.5"><CheckCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#6b8f47]" /> Painel e agenda completos</li>
               </ul>
               <Link to="/cadastro/empresa" className="mt-5 inline-block px-5 py-2.5 rounded-xl bg-[#4a6741] text-white font-bold hover:bg-[#364a25] transition-colors text-sm">
                 Cadastrar minha empresa

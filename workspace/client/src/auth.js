@@ -3,6 +3,7 @@
 // Finalidade: Modulo do frontend responsavel por auth.
 import { createContext, useContext, useEffect, useState } from 'react';
 import { api, clearAuth, getStoredRole, getToken, setAuth } from './api';
+import { checkNotificationSounds } from './sounds';
 
 const AuthContext = createContext(undefined);
 
@@ -53,6 +54,24 @@ export function AuthProvider({ children }) {
 
     }
   }
+
+  // Toca som de notificacao (mp3_1 = mensagem, mp3_2 = coleta aceita)
+  // quando chegam notificacoes novas detectadas pelo polling.
+  async function refreshSounds() {
+    try {
+      const data = await api('/notifications');
+      checkNotificationSounds(data.notifications);
+    } catch {
+
+    }
+  }
+
+  useEffect(() => {
+    if (!token) return;
+    refreshSounds();
+    const interval = setInterval(refreshSounds, 15000);
+    return () => clearInterval(interval);
+  }, [token]);
 
   function login(tokenValue, roleValue) {
     setAuth(tokenValue, roleValue);

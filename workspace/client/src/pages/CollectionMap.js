@@ -7,6 +7,7 @@ import { MapContainer, Marker, Popup, ScaleControl, TileLayer, useMap } from 're
 import L from 'leaflet';
 import { api, formatDate } from '../api';
 import { useAuth } from '../auth';
+import { playMessageSound } from '../sounds';
 import StatusBadge from '../components/StatusBadge';
 import { getPinIcon } from '../components/MapView';
 import { Bell, Calendar, CheckCircle, ChevronDown, ChevronUp, MapPin, MessageSquare, Package, Phone, Search, Send, Sliders, X, XCircle } from '../components/Icons';
@@ -23,7 +24,7 @@ const STATUS_META = [
 const COLOR_BY_STATUS = Object.fromEntries(STATUS_META.map((s) => [s.key, s.color]));
 
 const MENU_LINKS = [
-  { to: '/empresa/dashboard', label: 'Dashboard' },
+  { to: '/empresa/dashboard', label: 'Painel' },
   { to: '/empresa/mapa', label: 'Mapa de Coletas' },
   { to: '/empresa/agenda', label: 'Agenda' }
 ];
@@ -338,15 +339,26 @@ export default function CollectionMap() {
   const [chatLoading, setChatLoading] = useState(false);
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const chatEndRef = useRef(null);
+  const chatCountRef = useRef(0); // detecta novas mensagens recebidas
 
   useEffect(() => {
     if (selected && ['aceita', 'agendada', 'em_coleta', 'concluida'].includes(selected.status)) {
       setChatLoading(true);
       api(`/collections/${selected.id}/messages`)
-        .then((d) => setChatMessages(d.messages || []))
+        .then((d) => {
+          const msgs = d.messages || [];
+          const prevCount = chatCountRef.current;
+          chatCountRef.current = msgs.length;
+          // Toca som apenas se recebeu mensagem do cliente (nao pela propria)
+          if (msgs.length > prevCount && prevCount > 0 && msgs[msgs.length - 1]?.sender_type !== 'company') {
+            playMessageSound();
+          }
+          setChatMessages(msgs);
+        })
         .catch(() => setChatMessages([]))
         .finally(() => setChatLoading(false));
     } else {
+      chatCountRef.current = 0;
       setChatMessages([]);
     }
   }, [selected?.id]);
@@ -364,7 +376,9 @@ export default function CollectionMap() {
       });
       setChatInput('');
       const d = await api(`/collections/${selected.id}/messages`);
-      setChatMessages(d.messages || []);
+      const msgs = d.messages || [];
+      chatCountRef.current = msgs.length; // atualiza sem tocar som pela propria mensagem
+      setChatMessages(msgs);
     } catch (err) {
       showToast(err.message || 'Erro ao enviar mensagem');
     }

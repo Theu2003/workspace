@@ -54,23 +54,23 @@ export default function RegisterUser() {
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-stone-700 mb-1">Nome completo</label>
-                <input className={inputClass} placeholder="Maria da Silva" value={form.name} required onChange={(e) => setField('name', e.target.value)} />
+                <input className={inputClass} value={form.name} required onChange={(e) => setField('name', e.target.value)} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-stone-700 mb-1">CPF</label>
-                <input className={inputClass} placeholder="000.000.000-00" value={form.cpf} required onChange={(e) => setField('cpf', e.target.value.replace(/\D/g, '').slice(0, 11))} />
+                <input className={inputClass} value={form.cpf} required onChange={(e) => setField('cpf', e.target.value.replace(/\D/g, '').slice(0, 11))} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-stone-700 mb-1">Telefone</label>
-                <input className={inputClass} placeholder="(11) 99999-9999" value={form.phone} required onChange={(e) => setField('phone', e.target.value)} />
+                <input className={inputClass} value={form.phone} required onChange={(e) => setField('phone', e.target.value)} />
               </div>
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-stone-700 mb-1">E-mail</label>
-                <input type="email" className={inputClass} placeholder="voce@email.com" value={form.email} required onChange={(e) => setField('email', e.target.value)} />
+                <input type="email" className={inputClass} value={form.email} required onChange={(e) => setField('email', e.target.value)} />
               </div>
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-stone-700 mb-1">Senha</label>
-                <input type="password" className={inputClass} placeholder="Mínimo 6 caracteres" value={form.password} required minLength={6} onChange={(e) => setField('password', e.target.value)} />
+                <input type="password" className={inputClass} value={form.password} required minLength={6} onChange={(e) => setField('password', e.target.value)} />
               </div>
             </div>
 

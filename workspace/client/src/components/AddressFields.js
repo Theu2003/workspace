@@ -83,7 +83,6 @@ export default function AddressFields({ values, onChange, required = true }) {
           <label className="block text-sm font-semibold text-gray-700 mb-1">CEP</label>
           <input
             className={inputClass}
-            placeholder="00000-000"
             value={values.cep}
             required={required}
             onChange={(e) => onChange('cep', e.target.value.replace(/\D/g, '').slice(0, 8))}
@@ -93,7 +92,6 @@ export default function AddressFields({ values, onChange, required = true }) {
           <label className="block text-sm font-semibold text-gray-700 mb-1">Estado</label>
           <input
             className={inputClass}
-            placeholder="UF"
             maxLength={2}
             value={values.state}
             required={required}
@@ -104,7 +102,6 @@ export default function AddressFields({ values, onChange, required = true }) {
           <label className="block text-sm font-semibold text-gray-700 mb-1">Cidade</label>
           <input
             className={inputClass}
-            placeholder="Ex.: Belo Horizonte"
             value={values.city}
             required={required}
             onChange={(e) => onChange('city', e.target.value)}
@@ -114,7 +111,6 @@ export default function AddressFields({ values, onChange, required = true }) {
           <label className="block text-sm font-semibold text-gray-700 mb-1">Bairro</label>
           <input
             className={inputClass}
-            placeholder="Centro"
             value={values.neighborhood}
             required={required}
             onChange={(e) => onChange('neighborhood', e.target.value)}
@@ -124,7 +120,6 @@ export default function AddressFields({ values, onChange, required = true }) {
           <label className="block text-sm font-semibold text-gray-700 mb-1">Rua</label>
           <input
             className={inputClass}
-            placeholder="Av. Exemplo"
             value={values.street}
             required={required}
             onChange={(e) => onChange('street', e.target.value)}
@@ -134,7 +129,6 @@ export default function AddressFields({ values, onChange, required = true }) {
           <label className="block text-sm font-semibold text-gray-700 mb-1">Número</label>
           <input
             className={inputClass}
-            placeholder="123"
             value={values.number}
             required={required}
             onChange={(e) => onChange('number', e.target.value)}
@@ -144,7 +138,6 @@ export default function AddressFields({ values, onChange, required = true }) {
           <label className="block text-sm font-semibold text-gray-700 mb-1">Complemento</label>
           <input
             className={inputClass}
-            placeholder="Apto, casa, bloco..."
             value={values.complement}
             onChange={(e) => onChange('complement', e.target.value)}
           />

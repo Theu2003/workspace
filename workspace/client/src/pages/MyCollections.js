@@ -3,6 +3,7 @@
 // Finalidade: Pagina React responsavel por MyCollections.
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { api } from '../api';
+import { playMessageSound } from '../sounds';
 import StatusBadge from '../components/StatusBadge';
 import MapView from '../components/MapView';
 import { MapPin, Recycle, Calendar, Clock, MessageSquare, Truck, Send } from '../components/Icons';
@@ -25,6 +26,7 @@ export default function MyCollections() {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef(null);
+  const chatCountRef = useRef(0); // detecta novas mensagens recebidas
 
   useEffect(() => {
     api('/collections/mine')
@@ -80,8 +82,10 @@ export default function MyCollections() {
 
   useEffect(() => {
     if (selected && ['aceita', 'agendada', 'em_coleta', 'concluida'].includes(selected.status) && selected.company_id) {
+      chatCountRef.current = 0; // reseta ao trocar de coleta para nao tocar som no carregamento
       loadChat(selected.id);
     } else {
+      chatCountRef.current = 0;
       setChatMessages([]);
     }
   }, [selected?.id]);
@@ -94,7 +98,14 @@ export default function MyCollections() {
     setChatLoading(true);
     try {
       const data = await api(`/collections/${collectionId}/messages`);
-      setChatMessages(data.messages || []);
+      const msgs = data.messages || [];
+      const prevCount = chatCountRef.current;
+      chatCountRef.current = msgs.length;
+      // Toca som apenas se recebeu mensagem da empresa (nao pela propria)
+      if (msgs.length > prevCount && prevCount > 0 && msgs[msgs.length - 1]?.sender_type !== 'user') {
+        playMessageSound();
+      }
+      setChatMessages(msgs);
     } catch {
       setChatMessages([]);
     } finally {

@@ -20,6 +20,7 @@ export default function AdminDashboard() {
 
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
+  const [conversationMode, setConversationMode] = useState('active'); // 'active' = com conversa | 'all' = todas as aprovadas
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
@@ -159,6 +160,19 @@ export default function AdminDashboard() {
 
   const pendingCompanies = companies.filter((c) => c.is_approved === 0);
   const approvedCompanies = companies.filter((c) => c.is_approved === 1);
+  // Empresas aprovadas com conversa existente + todas as aprovadas (modo 'all')
+  const conversationIds = new Set(conversations.map((c) => c.company_id));
+  const messageTargets = conversationMode === 'active'
+    ? conversations
+    : approvedCompanies.map((c) => {
+        const conv = conversations.find((cv) => cv.company_id === c.id);
+        return {
+          company_id: c.id,
+          company_name: c.name,
+          last_message_at: conv?.last_message_at || null,
+          unread_count: conv?.unread_count || 0
+        };
+      });
 
   const tabs = [
     { id: 'pending', label: 'Pendentes', icon: <Clock className="w-4 h-4" />, count: pendingCompanies.length },
@@ -431,17 +445,37 @@ export default function AdminDashboard() {
                 <div className="p-3.5 border-b border-stone-100 bg-blue-50">
                   <h2 className="font-semibold text-stone-800 text-sm flex items-center gap-1.5">
                     <MessageSquare className="w-4 h-4 text-blue-600" />
-                    Conversas ({conversations.length})
+                    Empresas ({messageTargets.length})
                   </h2>
+                  <div className="mt-2.5 grid grid-cols-2 gap-1 bg-stone-100 rounded-lg p-1">
+                    <button
+                      type="button"
+                      onClick={() => setConversationMode('active')}
+                      className={`py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        conversationMode === 'active' ? 'bg-white text-stone-800 shadow-sm' : 'text-stone-500'
+                      }`}
+                    >
+                      Com conversa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConversationMode('all')}
+                      className={`py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        conversationMode === 'all' ? 'bg-white text-stone-800 shadow-sm' : 'text-stone-500'
+                      }`}
+                    >
+                      Todas aprovadas
+                    </button>
+                  </div>
                 </div>
                 <div className="divide-y divide-stone-100 max-h-[500px] overflow-y-auto">
-                  {conversations.length === 0 ? (
+                  {messageTargets.length === 0 ? (
                     <div className="p-5 text-center text-stone-400 text-sm">
                       <MessageSquare className="w-8 h-8 mx-auto text-stone-300 mb-1.5" />
-                      Nenhuma conversa ainda
+                      {conversationMode === 'active' ? 'Nenhuma conversa ainda — use "Todas aprovadas" para iniciar' : 'Nenhuma empresa aprovada'}
                     </div>
                   ) : (
-                    conversations.map((conv) => (
+                    messageTargets.map((conv) => (
                       <div
                         key={conv.company_id}
                         className={`p-3.5 cursor-pointer hover:bg-stone-50 transition-colors ${
@@ -453,7 +487,9 @@ export default function AdminDashboard() {
                           <div>
                             <p className="font-semibold text-stone-800 text-sm">{conv.company_name}</p>
                             <p className="text-[11px] text-stone-400">
-                              {new Date(conv.last_message_at + 'Z').toLocaleString('pt-BR')}
+                              {conv.last_message_at
+                                ? new Date(conv.last_message_at + 'Z').toLocaleString('pt-BR')
+                                : 'Sem mensagens ainda'}
                             </p>
                           </div>
                           {conv.unread_count > 0 && (
@@ -474,11 +510,19 @@ export default function AdminDashboard() {
                 <div className="bg-white rounded-xl border border-stone-100 flex flex-col h-[600px]">
                   <div className="p-4 border-b border-stone-100">
                     <h3 className="font-bold text-stone-800">
-                      {conversations.find(c => c.company_id === selectedConversation)?.company_name}
+                      {conversations.find(c => c.company_id === selectedConversation)?.company_name
+                        || companies.find(c => c.id === selectedConversation)?.name}
                     </h3>
+                    <p className="text-[11px] text-stone-400 mt-0.5">A mensagem chega como notificação para a empresa</p>
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {messages.length === 0 && (
+                      <div className="text-center py-8 text-stone-400 text-sm">
+                        <Send className="w-8 h-8 mx-auto text-stone-300 mb-2" />
+                        Nenhuma mensagem ainda. Envie a primeira!
+                      </div>
+                    )}
                     {messages.map((msg) => (
                       <div
                         key={msg.id}

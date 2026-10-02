@@ -5,13 +5,14 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { api } from '../api';
-import { Bell, CheckCircle, Truck, Calendar, XCircle, Recycle, MapPin, Building } from '../components/Icons';
+import { Bell, CheckCircle, Truck, Calendar, XCircle, Recycle, MapPin, Building, MessageSquare } from '../components/Icons';
 
 const TYPE_ICONS = {
   bem_vindo: <Recycle className="w-4 h-4" />,
   solicitacao_recebida: <CheckCircle className="w-4 h-4" />,
   nova_solicitacao: <Recycle className="w-4 h-4" />,
   nova_empresa_pendente: <Building className="w-4 h-4" />,
+  mensagem_admin: <MessageSquare className="w-4 h-4" />,
   aprovacao: <CheckCircle className="w-4 h-4" />,
   coleta_aceita: <CheckCircle className="w-4 h-4" />,
   coleta_agendada: <Calendar className="w-4 h-4" />,
