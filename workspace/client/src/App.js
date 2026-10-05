@@ -44,53 +44,55 @@ function RequireAuth({ role, children }) {
 }
 
 const FULLSCREEN_ROUTES = ['/empresa/mapa'];
+// Telas de apresentação: podem rolar internamente e exibem o rodapé
+const HOME_ROUTES = ['/'];
 
 export default function App() {
   const location = useLocation();
   const isFullscreen = FULLSCREEN_ROUTES.includes(location.pathname);
+  const isHome = HOME_ROUTES.includes(location.pathname);
 
   return (
-    <div className="min-h-screen flex flex-col">
-      { }
+    // Tela única: o app ocupa exatamente a altura da tela do aparelho (100dvh).
+    // A rolagem passa a ser INTERNA (listas/painéis), nunca da página inteira.
+    <div className="h-[100dvh] flex flex-col overflow-hidden">
+      {/* Navbar sempre fixa no topo, sem rolar */}
       {!isFullscreen && <Navbar />}
 
-      { }
-      <main className="flex-1">
-        <Routes>
-          { }
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/cadastro" element={<Register />} />
-          <Route path="/cadastro/empresa" element={<RegisterCompany />} />
-          <Route path="/cadastro/usuario" element={<RegisterUser />} />
-          <Route path="/esqueci-senha" element={<ForgotPassword />} />
+      {/* Área central: ocupa o resto da tela e rola internamente quando precisar */}
+      <main className="flex-1 min-h-0">
+        <div className="h-full overflow-y-auto nice-scroll">
+          <Routes>
+            {/* Home rola internamente (mantém o visual de site) */}
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/cadastro" element={<Register />} />
+            <Route path="/cadastro/empresa" element={<RegisterCompany />} />
+            <Route path="/cadastro/usuario" element={<RegisterUser />} />
+            <Route path="/esqueci-senha" element={<ForgotPassword />} />
 
-          { }
-          <Route path="/perfil" element={<RequireAuth role="user"><UserProfile /></RequireAuth>} />
-          <Route path="/dashboard" element={<RequireAuth role="user"><UserDashboard /></RequireAuth>} />
-          <Route path="/agendar-coleta" element={<RequireAuth role="user"><ScheduleCollection /></RequireAuth>} />
-          <Route path="/minhas-coletas" element={<RequireAuth role="user"><MyCollections /></RequireAuth>} />
+            <Route path="/perfil" element={<RequireAuth role="user"><UserProfile /></RequireAuth>} />
+            <Route path="/dashboard" element={<RequireAuth role="user"><UserDashboard /></RequireAuth>} />
+            <Route path="/agendar-coleta" element={<RequireAuth role="user"><ScheduleCollection /></RequireAuth>} />
+            <Route path="/minhas-coletas" element={<RequireAuth role="user"><MyCollections /></RequireAuth>} />
 
-          { }
-          <Route path="/empresa/pendente" element={<RequireAuth role="company"><CompanyPending /></RequireAuth>} />
-          <Route path="/empresa/perfil" element={<RequireAuth role="company"><CompanyProfile /></RequireAuth>} />
-          <Route path="/empresa/dashboard" element={<RequireAuth role="company"><CompanyDashboard /></RequireAuth>} />
-          <Route path="/empresa/mapa" element={<RequireAuth role="company"><CollectionMap /></RequireAuth>} />
-          <Route path="/empresa/agenda" element={<RequireAuth role="company"><CompanyAgenda /></RequireAuth>} />
+            <Route path="/empresa/pendente" element={<RequireAuth role="company"><CompanyPending /></RequireAuth>} />
+            <Route path="/empresa/perfil" element={<RequireAuth role="company"><CompanyProfile /></RequireAuth>} />
+            <Route path="/empresa/dashboard" element={<RequireAuth role="company"><CompanyDashboard /></RequireAuth>} />
+            <Route path="/empresa/mapa" element={<RequireAuth role="company"><CollectionMap /></RequireAuth>} />
+            <Route path="/empresa/agenda" element={<RequireAuth role="company"><CompanyAgenda /></RequireAuth>} />
 
-          { }
-          <Route path="/admin" element={<RequireAuth role="admin"><AdminDashboard /></RequireAuth>} />
+            <Route path="/admin" element={<RequireAuth role="admin"><AdminDashboard /></RequireAuth>} />
 
-          { }
-          <Route path="/notificacoes" element={<RequireAuth><Notifications /></RequireAuth>} />
+            <Route path="/notificacoes" element={<RequireAuth><Notifications /></RequireAuth>} />
 
-          { }
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
       </main>
 
-      { }
-      {!isFullscreen && <Footer />}
+      {/* Rodapé apenas nas telas de apresentação (Home) */}
+      {!isFullscreen && isHome && <Footer />}
     </div>
   );
 }

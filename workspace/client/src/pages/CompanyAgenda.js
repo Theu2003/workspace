@@ -47,7 +47,7 @@ export default function CompanyAgenda() {
   }
 
   return (
-    <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+    <div className="py-4 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
       <div className="mb-6">
         <h1 className="text-xl sm:text-2xl font-extrabold text-stone-800">Agenda da Empresa</h1>
         <p className="mt-0.5 text-sm text-stone-500">

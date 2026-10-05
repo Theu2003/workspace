@@ -9,7 +9,7 @@ export default function CompanyPending() {
   const { logout } = useAuth();
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-[#faf8f5] flex items-center justify-center px-4">
+    <div className="min-h-full flex items-center justify-center px-4 py-4">
       <div className="max-w-md w-full text-center">
         <div className="bg-white rounded-2xl border border-stone-100 p-8">
           <div className="w-16 h-16 mx-auto rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">

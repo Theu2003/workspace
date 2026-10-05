@@ -28,7 +28,7 @@ export default function UserDashboard() {
   ];
 
   return (
-    <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+    <div className="py-4 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-7">
         <div>
           <h1 className="text-2xl font-extrabold text-stone-800">Olá, {user?.name?.split(' ')[0]}!</h1>

@@ -128,7 +128,7 @@ export default function MyCollections() {
   }
 
   return (
-    <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+    <div className="py-4 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-stone-800">Minhas Coletas</h1>
         <p className="mt-0.5 text-sm text-stone-500">Acompanhe suas solicitações de coleta.</p>

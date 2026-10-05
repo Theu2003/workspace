@@ -71,7 +71,7 @@ export default function CompanyProfile() {
   }
 
   return (
-    <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto">
+    <div className="py-4 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto">
       <h1 className="text-xl sm:text-2xl font-extrabold text-stone-800 mb-1">Perfil da Empresa</h1>
       <p className="text-sm text-stone-500 mb-6">Gerencie os dados da sua empresa.</p>
 

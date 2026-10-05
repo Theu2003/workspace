@@ -255,7 +255,7 @@ export default function ScheduleCollection() {
   }
 
   return (
-    <div className="bg-gradient-to-b from-[#f4f7f0]/60 to-[#faf8f5] py-8 px-4 sm:px-6 lg:px-8">
+    <div className="bg-gradient-to-b from-[#f4f7f0]/60 to-[#faf8f5] py-4 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
         <div className="mb-7">
           <div className="flex items-center gap-3">

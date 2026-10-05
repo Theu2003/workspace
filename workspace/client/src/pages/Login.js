@@ -40,10 +40,10 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-[#faf8f5] py-12 px-4 pt-[max(3rem,env(safe-area-inset-top))] pb-[max(3rem,env(safe-area-inset-bottom))]">
+    <div className="min-h-full flex items-center justify-center bg-[#faf8f5] px-4 py-4">
       <div className="max-w-sm mx-auto">
-        <div className="bg-white rounded-2xl border border-stone-100 p-7">
-          <div className="text-center mb-7">
+        <div className="bg-white rounded-2xl border border-stone-100 p-6">
+          <div className="text-center mb-5">
             <div className="w-12 h-12 mx-auto rounded-xl bg-[#4a6741] flex items-center justify-center text-white text-lg font-bold">
               ♻
             </div>
@@ -51,7 +51,7 @@ export default function Login() {
             <p className="mt-1 text-sm text-stone-400">Acesse sua conta pra agendar ou gerenciar coletas</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-1 bg-stone-100 rounded-lg p-1 mb-6">
+          <div className="grid grid-cols-2 gap-1 bg-stone-100 rounded-lg p-1 mb-4">
             <button
               type="button"
               onClick={() => setMode('user')}
@@ -113,19 +113,6 @@ export default function Login() {
             </Link>
           </div>
 
-          <div className="mt-6 pt-5 border-t border-stone-100 text-center">
-            <p className="text-xs text-stone-400">
-              {mode === 'user'
-                ? 'Entrando como usuário. '
-                : 'Entrando como empresa. '}
-              <button
-                onClick={() => setMode(mode === 'user' ? 'company' : 'user')}
-                className="text-[#6b8f47] font-medium hover:underline"
-              >
-                Trocar para {mode === 'user' ? 'empresa' : 'usuário'}
-              </button>
-            </p>
-          </div>
         </div>
       </div>
     </div>

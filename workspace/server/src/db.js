@@ -46,20 +46,11 @@ function rowsFromResult(result) {
   });
 }
 
-function singleRow(result) {
-  const rows = rowsFromResult(result);
-  return rows.length > 0 ? rows[0] : undefined;
-}
-
 const db = {
 
   exec(sql) {
     sqlDb.exec(sql);
     saveDb();
-  },
-
-  pragma(_str) {
-
   },
 
   prepare(sql) {

@@ -53,7 +53,7 @@ export default function Notifications() {
   }
 
   return (
-    <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto">
+    <div className="py-4 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-extrabold text-stone-800">Notificações</h1>

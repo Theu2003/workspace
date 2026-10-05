@@ -184,7 +184,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-[#faf8f5]">
       <div className="bg-stone-800 text-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-2.5">
             <Shield className="w-6 h-6 sm:w-7 sm:h-7 text-amber-400 shrink-0" />
             <div>

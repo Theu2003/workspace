@@ -42,7 +42,7 @@ export default function RegisterUser() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-[#faf8f5] py-10 px-4">
+    <div className="min-h-full bg-[#faf8f5] px-4 py-4 sm:px-6">
       <div className="max-w-xl mx-auto">
         <div className="bg-white rounded-2xl border border-stone-100 p-7">
           <div className="text-center mb-7">
