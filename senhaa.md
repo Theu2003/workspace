@@ -1,7 +1,7 @@
 # Acesso
 
 - **E-mail:** `mateusmartinsperes53@gmail.com`
-- **Senha:** `Peres2003//`
+- **Senha:** `Peres2003/`
 
 # Como executar
 
@@ -9,7 +9,6 @@ Abra dois terminais:
 
 ### Terminal 1 — Backend
 
-```bash
 cd workspace/server
 npm run dev
 
