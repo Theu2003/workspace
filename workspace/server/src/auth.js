@@ -2,18 +2,9 @@
 // Autor: Mateus Martins Peres
 // Finalidade: Modulo do backend responsavel por auth.
 import jwt from 'jsonwebtoken';
-import { optionalEnv } from './env.js';
+import { requireEnv } from './env.js';
 
-const JWT_SECRET = (() => {
-  const secret = optionalEnv('JWT_SECRET', '');
-  if (secret) return secret;
-  if (process.env.NODE_ENV === 'production') {
-    console.error('\n❌ JWT_SECRET não definida — obrigatória em produção (server/.env)\n');
-    process.exit(1);
-  }
-  console.warn('⚠️  JWT_SECRET não definida — usando chave de desenvolvimento. NÃO use em produção!');
-  return 'dev-only-insecure-secret-do-not-use-in-production';
-})();
+const JWT_SECRET = requireEnv('JWT_SECRET');
 
 export function signToken(payload) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });

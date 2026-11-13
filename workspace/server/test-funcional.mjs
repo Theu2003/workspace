@@ -176,6 +176,9 @@ async function main() {
 
     const blocked = await req('GET', '/collections', { token: companyToken });
     check('Empresa não aprovada listando coletas → 403', blocked.status === 403, `status=${blocked.status}`);
+
+    const blockedDetail = await req('GET', `/collections/${collectionId}`, { token: companyToken });
+    check('Empresa não aprovada consultando coleta → 403', blockedDetail.status === 403, `status=${blockedDetail.status}`);
   }
 
   console.log('\n════════ 6. Painel admin: aprovação e gestão ════════');
@@ -198,6 +201,10 @@ async function main() {
 
     const appr = await req('POST', `/admin/companies/${companyId}/approve`, { token: adminToken });
     check('Aprovar empresa → 200', appr.status === 200, `status=${appr.status} erro=${appr.data?.error}`);
+
+    const unassignedDetail = await req('GET', `/collections/${collectionId}`, { token: companyToken });
+    check('Empresa aprovada não atribuída consultando coleta → 403',
+      unassignedDetail.status === 403, `status=${unassignedDetail.status}`);
 
     const stats = await req('GET', '/admin/stats', { token: adminToken });
     check('GET /admin/stats → 200', stats.status === 200, `status=${stats.status}`);

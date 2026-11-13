@@ -103,11 +103,15 @@ export default function MapView({ markers, center, zoom = 14, showRadius, classN
       },
       (err) => {
         setGpsBusy(false);
-        setGpsMessage(
-          err.code === 1
-            ? 'Permissão negada. Permita o acesso à localização no navegador.'
-            : 'Não foi possível obter sua localização.'
-        );
+        if (err.code === 1) {
+          setGpsMessage(
+            !window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+              ? `O navegador bloqueia o GPS em endereços http que não são localhost (você está em ${window.location.origin}). Acesse via localhost ou https://.`
+              : 'Permissão negada. Clique no cadeado ao lado do endereço no navegador → Localização → Permitir, depois tente de novo.'
+          );
+        } else {
+          setGpsMessage('Não foi possível obter sua localização.');
+        }
         setTimeout(() => setGpsMessage(''), 5000);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }

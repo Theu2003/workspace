@@ -131,14 +131,16 @@ function PopupContent({ c, onDetails, onZoom, onStatus, busy }) {
           <Package className="w-3.5 h-3.5 text-stone-400" />
           {totalKg(c)} kg
         </span>
-        <a
-          href={`tel:${(c.user_phone || '').replace(/\D/g, '')}`}
-          onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-1 text-blue-700 hover:underline"
-        >
-          <Phone className="w-3.5 h-3.5 text-blue-500" />
-          {c.user_phone}
-        </a>
+        {c.user_phone ? (
+          <a
+            href={`tel:${c.user_phone.replace(/\D/g, '')}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 text-blue-700 hover:underline"
+          >
+            <Phone className="w-3.5 h-3.5 text-blue-500" />
+            {c.user_phone}
+          </a>
+        ) : <span className="text-xs text-stone-400">Telefone não informado</span>}
       </div>
       <div className="mt-3 pt-3 border-t border-stone-100 grid grid-cols-2 gap-2">
         {c.status === 'pendente' ? (
@@ -411,9 +413,9 @@ export default function CollectionMap() {
           <div className="flex justify-between gap-3">
             <dt className="text-stone-400">Telefone</dt>
             <dd className="font-medium text-stone-800">
-              <a href={`tel:${(selected.user_phone || '').replace(/\D/g, '')}`} className="hover:underline">
-                {selected.user_phone || '—'}
-              </a>
+              {selected.user_phone
+                ? <a href={`tel:${selected.user_phone.replace(/\D/g, '')}`} className="hover:underline">{selected.user_phone}</a>
+                : 'Não informado'}
             </dd>
           </div>
           <div className="flex justify-between gap-3">

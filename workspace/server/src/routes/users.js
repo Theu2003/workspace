@@ -2,7 +2,6 @@
 // Autor: Mateus Martins Peres
 // Finalidade: Rotas da API responsavel por users.
 import { Router } from 'express';
-import bcrypt from 'bcryptjs';
 import db from '../db.js';
 import { authMiddleware, requireRole } from '../auth.js';
 import { geocode } from '../geocode.js';
@@ -13,7 +12,7 @@ router.use(authMiddleware);
 router.get('/me', requireRole('user'), (req, res) => {
 
   const user = db.prepare(
-    `SELECT id, name, cpf, email, phone, created_at FROM users WHERE id = ?`
+    `SELECT id, name, cpf, email, phone, primary_contact, created_at FROM users WHERE id = ?`
   ).get(req.auth.id);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
 
@@ -28,21 +27,17 @@ router.get('/me', requireRole('user'), (req, res) => {
   res.json({ user: { ...user, city }, addresses });
 });
 
-router.put('/me', requireRole('user'), async (req, res) => {
-  const { name, phone, password } = req.body;
-
+router.put('/me', requireRole('user'), (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.auth.id);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
-
-  if (password) {
-
-    if (password.length < 6) return res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres' });
-    const hash = await bcrypt.hash(password, 10);
-    db.prepare('UPDATE users SET name = ?, phone = ?, password_hash = ? WHERE id = ?').run(name, phone, hash, req.auth.id);
-  } else {
-
-    db.prepare('UPDATE users SET name = ?, phone = ? WHERE id = ?').run(name, phone, req.auth.id);
+  if (Object.prototype.hasOwnProperty.call(req.body, 'phone') || Object.prototype.hasOwnProperty.call(req.body, 'email')) {
+    return res.status(400).json({ error: 'O contato principal não pode ser alterado sem verificação do novo contato' });
   }
+  if (Object.prototype.hasOwnProperty.call(req.body, 'password')) {
+    return res.status(400).json({ error: 'Use o fluxo de alteração de senha com código de verificação' });
+  }
+  const name = req.body.name ?? user.name;
+  db.prepare('UPDATE users SET name = ? WHERE id = ?').run(name, req.auth.id);
   res.json({ message: 'Perfil atualizado' });
 });
 

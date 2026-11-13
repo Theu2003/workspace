@@ -16,6 +16,7 @@ Documentação completa de todas as APIs utilizadas no projeto:
 | Formato de dados | JSON (`Content-Type: application/json`) |
 | Papéis (roles) | `user` (usuário), `company` (empresa), `admin` (administrador) |
 | Expiração do token | 7 dias |
+| Códigos de verificação | 6 dígitos, expiram em 10 minutos, uso único e até 5 tentativas |
 
 ### Códigos de resposta mais usados
 
@@ -23,11 +24,14 @@ Documentação completa de todas as APIs utilizadas no projeto:
 |---|---|
 | 200 | Sucesso |
 | 201 | Criado com sucesso |
+| 202 | Solicitação aceita (cadastro pendente ou recuperação genérica) |
 | 400 | Dados inválidos/ausentes no corpo da requisição |
 | 401 | Não autenticado (token ausente, inválido ou expirado) |
 | 403 | Sem permissão (papel errado, empresa não aprovada, coleta de outro) |
 | 404 | Registro não encontrado |
 | 409 | Conflito (e-mail/CNPJ duplicado, ou outra empresa já aceitou a coleta) |
+| 429 | Muitas tentativas/reenvios |
+| 503 | Provedor de verificação selecionado não está configurado ou não está disponível |
 | 500 | Erro interno do servidor |
 
 ---
@@ -38,10 +42,115 @@ Documentação completa de todas as APIs utilizadas no projeto:
 
 | Método | Rota | Quem usa | Descrição |
 |---|---|---|---|
-| POST | `/auth/register/user` | Público | Cadastra um usuário comum (nome, CPF, e-mail, telefone, senha + endereço). Já faz login e devolve o token |
+| POST | `/auth/register/user` | Público | Inicia cadastro com exatamente um contato (e-mail ou telefone E.164); envia código e não cria conta/JWT até verificar |
+| POST | `/auth/register/user/verify` | Público | Confirma `{ pendingId, code }`, cria a conta e retorna JWT |
+| POST | `/auth/register/user/resend` | Público | Reenvia código de cadastro; há limites de tentativas e reenvios |
 | POST | `/auth/register/company` | Público | Cadastra uma empresa de coleta (CNPJ, materiais coletados etc.). Fica **pendente** até o admin aprovar. Notifica os admins |
-| POST | `/auth/login` | Público | Faz login. Body: `{ email, password, as }` — `as: 'company'` para login de empresa. Retorna `{ token, role }` |
+| POST | `/auth/login` | Público | Usuários entram com `{ identifier, password }` (e-mail ou telefone); empresas continuam com `{ email, password, as: 'company' }` |
+| POST | `/auth/password-reset/request` | Público | Solicita código de recuperação. Retorna resposta genérica para não revelar se a conta existe; o envio usa apenas contato já cadastrado |
+| POST | `/auth/password-reset/confirm` | Público | Confirma `{ identifier, code, newPassword }` |
+| POST | `/auth/password-change/request` | Usuário | Envia código ao contato principal atual do usuário autenticado |
+| POST | `/auth/password-change/confirm` | Usuário | Confirma `{ code, newPassword }` |
 | GET | `/auth/materials` | Público | Lista os tipos de materiais recicláveis aceitos no sistema |
+
+Cadastros de usuário aceitam **um** dos campos `email` ou `phone`. Telefone deve estar em E.164, como `+14155552671`; o sistema não infere o código do país. Usuários antigos continuam entrando pelo e-mail. Seus pedidos de redefinição usam o e-mail existente como contato principal, sem exigir novo OTP no login.
+
+Para habilitar os envios, configure no `server/.env` as variáveis SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`) e/ou Twilio (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_PHONE`). Configure o provedor correspondente ao canal escolhido. Não registre códigos ou credenciais em logs.
+
+Na migração, todos os registros existentes são marcados como `primary_contact: "email"`; telefone e demais campos legados, inclusive valores vazios ou duplicados, são preservados. Esses usuários continuam entrando e recebendo OTP pelo e-mail. Login/recuperação por telefone só localiza contas `primary_contact: "phone"`. A unicidade de telefone é aplicada somente entre contas phone-primary; um telefone legado repetido não impede uma nova conta phone-primary.
+
+### Exemplos
+
+**POST `/api/auth/register/user`**
+```json
+// Request
+{
+  "name": "João Silva",
+  "cpf": "12345678901",
+  "email": "joao@email.com",
+  "password": "senha123",
+  "cep": "01310-100",
+  "state": "SP",
+  "city": "São Paulo",
+  "neighborhood": "Bela Vista",
+  "street": "Av. Paulista",
+  "number": "1000",
+  "complement": "Apto 101"
+}
+
+// Response 202
+{ "pendingId": "identificador-opaco", "expiresIn": 600, "message": "Código de verificação enviado" }
+```
+
+**POST `/api/auth/register/user/verify`**
+```json
+{ "pendingId": "identificador-opaco", "code": "123456" }
+```
+Após a verificação, a resposta `201` contém `{ token, role: "user", user }`.
+
+Para cadastrar por telefone, envie `phone: "+14155552671"` e omita `email` (ou deixe-o vazio).
+
+**POST `/api/auth/register/company`**
+```json
+// Request
+{
+  "name": "Recicla Verde Ltda",
+  "cnpj": "12345678000199",
+  "responsible": "Maria Santos",
+  "email": "contato@reciclaverde.com",
+  "phone": "1133334444",
+  "password": "senha123",
+  "cep": "01310-930",
+  "state": "SP",
+  "city": "São Paulo",
+  "neighborhood": "Consolação",
+  "street": "Rua da Consolação",
+  "number": "3000",
+  "complement": "",
+  "materials": ["Plástico", "Papel", "Metal"]
+}
+
+// Response 201
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "role": "company",
+  "company": { "name": "Recicla Verde Ltda", "email": "contato@reciclaverde.com" }
+}
+```
+
+**POST `/api/auth/login`**
+```json
+// Request (usuário)
+{ "identifier": "joao@email.com", "password": "senha123" }
+
+// Request (usuário com telefone como contato principal)
+{ "identifier": "+14155552671", "password": "senha123" }
+
+// Request (empresa)
+{ "email": "contato@reciclaverde.com", "password": "senha123", "as": "company" }
+
+// Response 200 (usuário)
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "role": "user",
+  "user": { "id": 1, "name": "João Silva", "email": "joao@email.com", "city": "São Paulo" }
+}
+
+// Response 200 (empresa)
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "role": "company",
+  "company": { "id": 1, "name": "Recicla Verde Ltda", "email": "contato@reciclaverde.com", "is_approved": 1 }
+}
+```
+
+**GET `/api/auth/materials`**
+```json
+// Response 200
+{
+  "materials": ["Papel", "Papelão", "Plástico", "Vidro", "Metal", "Eletrônicos", "Óleo de cozinha", "Outros"]
+}
+```
 
 ---
 
@@ -50,11 +159,13 @@ Documentação completa de todas as APIs utilizadas no projeto:
 | Método | Rota | Descrição |
 |---|---|---|
 | GET | `/users/me` | Dados do perfil do usuário logado + lista de endereços |
-| PUT | `/users/me` | Atualiza nome, telefone e/ou senha. Body: `{ name, phone, password? }` |
+| PUT | `/users/me` | Atualiza apenas o nome. E-mail/telefone não podem ser alterados sem verificação; senha usa `/auth/password-change/*` |
 | POST | `/users/addresses` | Adiciona um novo endereço. Se `isDefault: true`, vira o endereço padrão |
 | PUT | `/users/addresses/:id` | Atualiza um endereço existente (aceita latitude/longitude manuais do mapa) |
 | POST | `/users/addresses/:id/default` | Define aquele endereço como padrão |
 | DELETE | `/users/addresses/:id` | Remove um endereço (se era o padrão, o primeiro restante assume) |
+
+O perfil devolve `email` e `phone` como `null` quando não definidos. Contatos não são editáveis pelo perfil para impedir redirecionamento de códigos a um endereço não verificado.
 
 ---
 
@@ -214,4 +325,4 @@ Usuário                        Empresa A                Empresa B
 
 ---
 
-_Última atualização: 27/06/2026 — ReciclaJá v1.0_
+_Última atualização: 13/11/2026 — ReciclaJá v1.0_

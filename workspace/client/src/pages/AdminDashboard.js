@@ -602,8 +602,8 @@ export default function AdminDashboard() {
                   {users.filter(u => u.role === 'user').map((user) => (
                     <tr key={user.id} className="hover:bg-stone-50">
                       <td className="px-4 py-2.5 font-medium text-stone-800">{user.name}</td>
-                      <td className="px-4 py-2.5 text-stone-500">{user.email}</td>
-                      <td className="px-4 py-2.5 text-stone-500">{user.phone}</td>
+                      <td className="px-4 py-2.5 text-stone-500">{user.email || '—'}</td>
+                      <td className="px-4 py-2.5 text-stone-500">{user.phone || '—'}</td>
                       <td className="px-4 py-2.5 text-stone-500">{user.cpf}</td>
                       <td className="px-4 py-2.5 text-stone-400 text-xs">
                         {new Date(user.created_at).toLocaleDateString('pt-BR')}

@@ -8,7 +8,7 @@ import { api } from '../api';
 
 export default function Login() {
   const [mode, setMode] = useState('user');
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,7 +22,7 @@ export default function Login() {
     try {
       const data = await api('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password, as: mode })
+        body: JSON.stringify({ identifier, password, as: mode })
       });
       login(data.token, data.role);
       if (data.role === 'admin') {
@@ -70,12 +70,12 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-3.5">
             <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">E-mail</label>
+              <label className="block text-sm font-medium text-stone-700 mb-1">{mode === 'company' ? 'E-mail' : 'E-mail ou telefone'}</label>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="voce@email.com"
+                type="text"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder={mode === 'company' ? 'voce@email.com' : 'voce@email.com ou +14155552671'}
                 required
                 className="w-full px-3 py-2.5 rounded-lg border border-stone-200 focus:border-[#6b8f47] focus:ring-1 focus:ring-[#c9d9b5] outline-none transition-colors text-sm"
               />

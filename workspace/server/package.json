@@ -5,14 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "node --test otp.test.mjs schema-migrations.test.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "sql.js": "^1.11.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^10.5.0",
+    "sql.js": "^1.11.0",
+    "twilio": "^6.3.0"
   }
 }

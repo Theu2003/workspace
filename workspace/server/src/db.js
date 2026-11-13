@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { requireEnv, optionalEnv } from './env.js';
+import { migrateUserContactColumns } from './schema-migrations.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -114,9 +115,10 @@ CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,                    -- Nome completo do usuário
   cpf TEXT UNIQUE NOT NULL,              -- CPF (documento brasileiro, 11 dígitos)
-  email TEXT UNIQUE NOT NULL,            -- E-mail (usado para login)
-  phone TEXT NOT NULL,                   -- Telefone para contato
+  email TEXT UNIQUE,                     -- Identificador opcional do usuário
+  phone TEXT,                            -- Identificador opcional do usuário (E.164)
   password_hash TEXT NOT NULL,           -- Senha hasheada com bcrypt (nunca armazena texto puro)
+  primary_contact TEXT NOT NULL DEFAULT 'email' CHECK(primary_contact IN ('email', 'phone')),
   role TEXT NOT NULL DEFAULT 'user',     -- Papel: 'user' ou 'admin'
   created_at TEXT DEFAULT (datetime('now')) -- Data de criação automática
 );
@@ -249,6 +251,37 @@ CREATE TABLE IF NOT EXISTS collection_messages (
 );
 `);
 
+ migrateUserContactColumns({ db, sqlDb, saveDb });
+
+ db.exec(`
+   CREATE TABLE IF NOT EXISTS pending_registrations (
+     id TEXT PRIMARY KEY,
+     contact_type TEXT NOT NULL CHECK(contact_type IN ('email', 'phone')),
+     contact_value TEXT NOT NULL,
+     payload TEXT NOT NULL,
+     expires_at INTEGER NOT NULL,
+     created_at INTEGER NOT NULL
+   );
+   CREATE TABLE IF NOT EXISTS verification_codes (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+     pending_id TEXT REFERENCES pending_registrations(id) ON DELETE CASCADE,
+     purpose TEXT NOT NULL CHECK(purpose IN ('registration', 'password_reset', 'password_change')),
+     channel TEXT NOT NULL CHECK(channel IN ('email', 'phone')),
+     destination TEXT NOT NULL,
+     code_hash TEXT NOT NULL,
+     expires_at INTEGER NOT NULL,
+     attempts INTEGER NOT NULL DEFAULT 0,
+     sends INTEGER NOT NULL DEFAULT 1,
+     last_sent_at INTEGER NOT NULL,
+     consumed_at INTEGER,
+     created_at INTEGER NOT NULL,
+     UNIQUE(user_id, purpose),
+     UNIQUE(pending_id, purpose)
+   );
+   CREATE INDEX IF NOT EXISTS verification_codes_expiry ON verification_codes(expires_at);
+ `);
+
 import bcrypt from 'bcryptjs';
 
 const adminEmail = requireEnv('ADMIN_EMAIL');
@@ -265,7 +298,7 @@ if (!existingAdmin) {
   const adminHash = bcrypt.hashSync(adminPassword, 10);
   db.prepare(
     `INSERT INTO users (name, cpf, email, phone, password_hash, role) VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(adminName, '00000000000', adminEmail, '', adminHash, 'admin');
+  ).run(adminName, '00000000000', adminEmail, null, adminHash, 'admin');
   console.log(`✅ Usuário administrador criado (${adminEmail})`);
 }
 

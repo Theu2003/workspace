@@ -370,8 +370,11 @@ router.get('/:id', (req, res) => {
     return res.status(403).json({ error: 'Acesso negado' });
   }
 
-  if (req.auth.role === 'company' && row.company_id && row.company_id !== req.auth.id) {
-    return res.status(403).json({ error: 'Acesso negado' });
+  if (req.auth.role === 'company') {
+    const company = db.prepare('SELECT is_approved FROM companies WHERE id = ?').get(req.auth.id);
+    if (!company || !company.is_approved || row.company_id !== req.auth.id) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
   }
 
   res.json({ collection: serializeCollection(row) });

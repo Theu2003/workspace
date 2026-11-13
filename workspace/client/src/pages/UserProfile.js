@@ -10,7 +10,10 @@ const inputClass = 'w-full px-3 py-2.5 rounded-lg border border-stone-200 focus:
 
 export default function UserProfile() {
   const { user, refreshProfile } = useAuth();
-  const [profile, setProfile] = useState({ name: '', phone: '', password: '' });
+  const [profile, setProfile] = useState({ name: '' });
+  const [passwordCode, setPasswordCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordCodeSent, setPasswordCodeSent] = useState(false);
   const [addresses, setAddresses] = useState([]);
   const [showNewAddress, setShowNewAddress] = useState(false);
   const [newAddress, setNewAddress] = useState({
@@ -19,7 +22,7 @@ export default function UserProfile() {
   const [msg, setMsg] = useState(null);
 
   useEffect(() => {
-    if (user) setProfile({ name: user.name, phone: user.phone || '', password: '' });
+    if (user) setProfile({ name: user.name });
     api('/users/me')
       .then((d) => setAddresses(d.addresses))
       .catch(() => {});
@@ -29,10 +32,37 @@ export default function UserProfile() {
     e.preventDefault();
     setMsg(null);
     try {
-      await api('/users/me', { method: 'PUT', body: JSON.stringify(profile) });
+      await api('/users/me', { method: 'PUT', body: JSON.stringify({ name: profile.name }) });
       await refreshProfile();
       setMsg({ type: 'success', text: 'Perfil atualizado!' });
-      setProfile((p) => ({ ...p, password: '' }));
+    } catch (err) {
+      setMsg({ type: 'error', text: err.message });
+    }
+  }
+
+  async function requestPasswordCode() {
+    setMsg(null);
+    try {
+      await api('/auth/password-change/request', { method: 'POST', body: JSON.stringify({}) });
+      setPasswordCodeSent(true);
+      setMsg({ type: 'success', text: 'Código enviado ao contato principal cadastrado.' });
+    } catch (err) {
+      setMsg({ type: 'error', text: err.message });
+    }
+  }
+
+  async function changePassword(e) {
+    e.preventDefault();
+    setMsg(null);
+    try {
+      await api('/auth/password-change/confirm', {
+        method: 'POST',
+        body: JSON.stringify({ code: passwordCode, newPassword })
+      });
+      setPasswordCode('');
+      setNewPassword('');
+      setPasswordCodeSent(false);
+      setMsg({ type: 'success', text: 'Senha alterada com sucesso!' });
     } catch (err) {
       setMsg({ type: 'error', text: err.message });
     }
@@ -87,25 +117,33 @@ export default function UserProfile() {
               <input className={inputClass} value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} required />
             </div>
             <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">E-mail</label>
-              <input className={inputClass} value={user?.email || ''} disabled />
+              <label className="block text-sm font-medium text-stone-700 mb-1">Contato principal (não editável)</label>
+              <input className={inputClass} value={user?.email || user?.phone || ''} disabled />
             </div>
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-1">CPF</label>
               <input className={inputClass} value={user?.cpf || ''} disabled />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Telefone</label>
-              <input className={inputClass} value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Nova senha <span className="text-xs text-stone-400">(opcional)</span></label>
-              <input type="password" className={inputClass} placeholder="Deixe vazio pra manter" value={profile.password} onChange={(e) => setProfile({ ...profile, password: e.target.value })} />
-            </div>
             <button className="w-full py-2.5 rounded-lg bg-[#4a6741] text-white font-semibold hover:bg-[#364a25] transition-colors">
               Salvar alterações
             </button>
           </form>
+          <div className="mt-5 border-t border-stone-100 pt-4">
+            <h3 className="font-bold text-stone-800 text-sm mb-2">Alterar senha</h3>
+            {!passwordCodeSent ? (
+              <button type="button" onClick={requestPasswordCode} className="w-full py-2.5 rounded-lg border border-stone-200 text-sm font-semibold text-[#4a6741]">
+                Enviar código ao contato cadastrado
+              </button>
+            ) : (
+              <form onSubmit={changePassword} className="space-y-3">
+                <input className={inputClass} inputMode="numeric" autoComplete="one-time-code" placeholder="Código de verificação"
+                  value={passwordCode} onChange={(e) => setPasswordCode(e.target.value.replace(/\D/g, '').slice(0, 6))} required minLength={6} />
+                <input type="password" className={inputClass} placeholder="Nova senha (mínimo 6 caracteres)"
+                  value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={6} />
+                <button className="w-full py-2.5 rounded-lg bg-[#4a6741] text-white font-semibold">Confirmar nova senha</button>
+              </form>
+            )}
+          </div>
         </section>
 
         <section className="bg-white rounded-xl border border-stone-100 p-5">

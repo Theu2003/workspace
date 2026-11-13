@@ -12,6 +12,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+// USE_HTTPS=1 ativa HTTPS com certificado auto-assinado (certs/).
+// Obrigatório para que o GPS funcione em endereços que não são localhost
+// (ex: celular na rede local via https://192.168.x.x).
+const useHttps = process.env.USE_HTTPS === '1'
+const thisDir = path.dirname(fileURLToPath(import.meta.url))
+const keyFile = path.join(thisDir, 'certs', 'key.pem')
+const certFile = path.join(thisDir, 'certs', 'cert.pem')
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -33,6 +44,10 @@ export default defineConfig({
     allowedHosts: ['.monkeycode-ai.live', '.trycloudflare.com'],
     host: true,
     port: 5173,
+    https: useHttps && fs.existsSync(keyFile) && fs.existsSync(certFile) ? {
+      key: fs.readFileSync(keyFile),
+      cert: fs.readFileSync(certFile)
+    } : undefined,
     proxy: {
       '/api': {
         target: 'http://localhost:3001',

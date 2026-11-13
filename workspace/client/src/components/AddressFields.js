@@ -49,7 +49,11 @@ export default function AddressFields({ values, onChange, required = true }) {
       (err) => {
         setGeoLoading(false);
         if (err.code === 1) {
-          setGeoStatus('Permissão de localização negada. Permita o acesso nas configurações do navegador.');
+          if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            setGeoStatus(`O navegador bloqueia o GPS em endereços http que não são localhost (você está em ${window.location.origin}). Acesse pelo computador via http://localhost:5173, ou por um endereço https://, ou preencha o endereço manualmente.`);
+          } else {
+            setGeoStatus('Permissão de localização negada. Clique no cadeado ao lado do endereço no navegador → Localização → Permitir, depois tente de novo.');
+          }
         } else if (err.code === 2) {
           setGeoStatus('Localização indisponível. Tente novamente.');
         } else {
