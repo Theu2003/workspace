@@ -24,24 +24,66 @@ router.get('/me', requireRole('company'), (req, res) => {
 });
 
 router.put('/me', requireRole('company'), async (req, res) => {
-  const { name, responsible, phone, materials, password, cep, state, city, neighborhood, street, number, complement } = req.body;
+  const { name, responsible, phone, materials, password, cep, state, city, neighborhood, street, number, complement = '' } = req.body;
 
   const company = db.prepare('SELECT * FROM companies WHERE id = ?').get(req.auth.id);
   if (!company) return res.status(404).json({ error: 'Empresa não encontrada' });
 
-  if (password) {
-
-    if (password.length < 6) return res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres' });
-    const hash = await bcrypt.hash(password, 10);
-    db.prepare(
-      `UPDATE companies SET name = ?, responsible = ?, phone = ?, materials = ?, password_hash = ?, cep = ?, state = ?, city = ?, neighborhood = ?, street = ?, number = ?, complement = ? WHERE id = ?`
-    ).run(name, responsible, phone, JSON.stringify(materials || []), hash, cep, state, city, neighborhood, street, number, complement, req.auth.id);
-  } else {
-
-    db.prepare(
-      `UPDATE companies SET name = ?, responsible = ?, phone = ?, materials = ?, cep = ?, state = ?, city = ?, neighborhood = ?, street = ?, number = ?, complement = ? WHERE id = ?`
-    ).run(name, responsible, phone, JSON.stringify(materials || []), cep, state, city, neighborhood, street, number, complement, req.auth.id);
+  const cleanName = String(name ?? '').trim();
+  const cleanResponsible = String(responsible ?? '').trim();
+  const cleanPhone = String(phone ?? '').trim();
+  if (!cleanName || !cleanResponsible || !cleanPhone) {
+    return res.status(400).json({ error: 'Nome, responsável e telefone são obrigatórios' });
   }
+
+  if (!Array.isArray(materials) || materials.length === 0) {
+    return res.status(400).json({ error: 'Selecione ao menos um tipo de material coletado' });
+  }
+  const invalidMaterial = materials.find((material) => !MATERIAL_TYPES.includes(material));
+  if (invalidMaterial !== undefined) {
+    return res.status(400).json({ error: `Tipo de material inválido: ${invalidMaterial}` });
+  }
+
+  if (password && String(password).length < 6) {
+    return res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres' });
+  }
+
+  const nextAddress = {
+    cep: cep ?? company.cep,
+    state: state ?? company.state,
+    city: city ?? company.city,
+    neighborhood: neighborhood ?? company.neighborhood,
+    street: street ?? company.street,
+    number: number ?? company.number,
+    complement: complement ?? company.complement
+  };
+  const addressFields = ['cep', 'state', 'city', 'neighborhood', 'street', 'number'];
+  const addressChanged = addressFields.some(
+    (field) => String(nextAddress[field] ?? '') !== String(company[field] ?? '')
+  );
+
+  // Endereço mudou: recalcula as coordenadas usadas na lista e no mapa.
+  const coords = addressChanged
+    ? (await geocode(nextAddress)) ?? { latitude: company.latitude, longitude: company.longitude }
+    : { latitude: company.latitude, longitude: company.longitude };
+
+  const baseFields = [
+    cleanName, cleanResponsible, cleanPhone, JSON.stringify(materials),
+    nextAddress.cep, nextAddress.state, nextAddress.city, nextAddress.neighborhood,
+    nextAddress.street, nextAddress.number, nextAddress.complement,
+    coords.latitude, coords.longitude
+  ];
+  const setClause = 'name = ?, responsible = ?, phone = ?, materials = ?, cep = ?, state = ?, city = ?, neighborhood = ?, street = ?, number = ?, complement = ?, latitude = ?, longitude = ?';
+
+  if (password) {
+    const hash = await bcrypt.hash(password, 10);
+    db.prepare(`UPDATE companies SET ${setClause}, password_hash = ? WHERE id = ?`)
+      .run(...baseFields, hash, req.auth.id);
+  } else {
+    db.prepare(`UPDATE companies SET ${setClause} WHERE id = ?`)
+      .run(...baseFields, req.auth.id);
+  }
+
   res.json({ message: 'Perfil atualizado' });
 });
 
@@ -75,7 +117,9 @@ router.delete('/me', requireRole('company'), (req, res) => {
 
     db.prepare('UPDATE collections SET company_id = NULL, status = ? WHERE company_id = ?').run('pendente', companyId);
 
-    db.prepare(`UPDATE notifications SET company_id = NULL WHERE company_id = ?`).run(companyId);
+    // Notificações da própria empresa vão embora junto com a conta
+    // (antes viravam linhas órfãs sem user_id nem company_id).
+    db.prepare('DELETE FROM notifications WHERE company_id = ?').run(companyId);
 
     db.prepare("DELETE FROM messages WHERE (sender_type = 'company' AND sender_id = ?) OR (receiver_type = 'company' AND receiver_id = ?)").run(companyId, companyId);
 

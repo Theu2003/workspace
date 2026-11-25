@@ -36,7 +36,7 @@ test('unconfigured selected delivery fails clearly without making a network requ
     for (const name of names) delete process.env[name];
     await assert.rejects(
       sendVerificationCode('email', 'test@example.invalid', '123456'),
-      /SMTP is not configured; set/
+      /SMTP não configurado; defina/
     );
   } finally {
     for (const name of names) {

@@ -17,7 +17,7 @@ export default function Footer() {
               ♻
             </span>
             <span className="text-base font-bold text-white">
-              Recicla<span className="text-[#a6bf87]">Já</span>
+              Pardela
             </span>
           </div>
 
@@ -40,7 +40,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-stone-700/60 mt-3 pt-2.5 flex flex-col sm:flex-row items-center justify-between gap-1 text-[11px] text-stone-500">
-          <p>&copy; {new Date().getFullYear()} ReciclaJá. Todos os direitos reservados.</p>
+          <p>&copy; {new Date().getFullYear()} Pardela. Todos os direitos reservados.</p>
           <div className="flex items-center gap-3">
             <span>Seg–sex 08h–18h · Sáb 08h–12h</span>
             <a href="#" className="hover:text-stone-300 transition-colors">Termos</a>

@@ -1,12 +1,12 @@
 {
-  "name": "ecopickup-server",
+  "name": "pardela-server",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "test": "node --test otp.test.mjs schema-migrations.test.mjs"
+    "test": "node --test otp.test.mjs schema-migrations.test.mjs routes.test.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

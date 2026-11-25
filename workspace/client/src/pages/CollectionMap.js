@@ -582,7 +582,7 @@ export default function CollectionMap() {
             ♻
           </span>
           <span className="text-lg font-bold tracking-tight text-[#4a6741]">
-            Recicla<span className="text-[#6b8f47]">Já</span>
+            Pardela
           </span>
         </Link>
 

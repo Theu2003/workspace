@@ -163,13 +163,14 @@ router.get('/', requireRole('company'), (req, res) => {
     }
   });
 
-  if (distance && rows.length) {
-    const company = db.prepare('SELECT latitude, longitude FROM companies WHERE id = ?').get(req.auth.id);
-    if (company?.latitude != null) {
+  const maxDistanceKm = Number(distance);
+  if (Number.isFinite(maxDistanceKm) && maxDistanceKm > 0 && rows.length) {
+    const companyCoords = db.prepare('SELECT latitude, longitude FROM companies WHERE id = ?').get(req.auth.id);
+    if (companyCoords?.latitude != null) {
       rows = rows.filter((r) => {
         if (r.latitude == null) return true;
-        const d = haversine(company.latitude, company.longitude, r.latitude, r.longitude);
-        return d <= Number(distance);
+        const d = haversine(companyCoords.latitude, companyCoords.longitude, r.latitude, r.longitude);
+        return d <= maxDistanceKm;
       });
     }
   }
@@ -353,7 +354,7 @@ router.put('/:id/status', requireRole('company'), (req, res) => {
   if (messages[status]) {
     notifyUser(collection.user_id, `coleta_${status}`, messages[status], collection.id);
   }
-  res.json({ message: 'Coleta atualizada' });
+  res.json({ message: 'Coleta atualizada' });
 });
 
 router.get('/:id', (req, res) => {

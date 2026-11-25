@@ -68,8 +68,8 @@ function issueCode({ purpose, userId = null, pendingId = null, channel, destinat
     ? (pendingId ? db.prepare('SELECT * FROM verification_codes WHERE pending_id = ? AND purpose = ?').get(pendingId, purpose) : null)
     : db.prepare('SELECT * FROM verification_codes WHERE user_id = ? AND purpose = ?').get(userId, purpose);
   if (existing && existing.expires_at > now) {
-    if (now - existing.last_sent_at < CODE_RESEND_MS) throw new Error('A code was sent recently. Please wait before requesting another.');
-    if (existing.sends >= MAX_CODE_SENDS) throw new Error('The maximum number of code sends has been reached. Try again later.');
+    if (now - existing.last_sent_at < CODE_RESEND_MS) throw codeError('Aguarde um minuto antes de solicitar um novo código', 429);
+    if (existing.sends >= MAX_CODE_SENDS) throw codeError('Limite de envios de código atingido. Tente novamente mais tarde', 429);
   }
 
   const code = generateCode();
@@ -111,7 +111,13 @@ async function deliverIssuedCode(issued, channel, destination) {
   await sendVerificationCode(channel, destination, issued.code);
 }
 
-function checkCode(req, res, code, purpose, recordId) {
+function codeError(message, status) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
+function checkCode(res, code, purpose, recordId) {
   const row = db.prepare(
     `SELECT * FROM verification_codes WHERE purpose = ? AND ${purpose === 'registration' ? 'pending_id' : 'user_id'} = ?`
   ).get(purpose, recordId);
@@ -176,9 +182,9 @@ router.post('/register/user', async (req, res) => {
     await deliverIssuedCode(issued, contact.channel, contact.value);
   } catch (error) {
     db.prepare('DELETE FROM pending_registrations WHERE id = ?').run(pendingId);
-    const message = error.message.includes('configured') || error.message.includes('must be')
-      ? error.message
-      : 'Could not deliver the verification code. Check the selected delivery provider configuration.';
+    const message = error.message
+      ? `Não foi possível enviar o código de verificação: ${error.message}`
+      : 'Não foi possível enviar o código de verificação. Verifique a configuração do provedor selecionado.';
     return res.status(503).json({ error: message });
   }
 
@@ -203,7 +209,7 @@ router.post('/register/user/resend', async (req, res) => {
     await deliverIssuedCode(issued, pending.contact_type, pending.contact_value);
     return res.json({ message: 'Código de verificação enviado' });
   } catch (error) {
-    const status = error.message.includes('recently') || error.message.includes('maximum') ? 429 : 503;
+    const status = error.status === 429 ? 429 : 503;
     return res.status(status).json({ error: error.message });
   }
 });
@@ -213,7 +219,7 @@ router.post('/register/user/verify', async (req, res) => {
   const { pendingId, code } = req.body;
   const pending = db.prepare('SELECT * FROM pending_registrations WHERE id = ?').get(pendingId);
   if (!pending || pending.expires_at <= Date.now()) return res.status(400).json({ error: 'Cadastro pendente inválido ou expirado' });
-  if (!checkCode(req, res, code, 'registration', pendingId)) return;
+  if (!checkCode(res, code, 'registration', pendingId)) return;
 
   const data = JSON.parse(pending.payload);
   const exists = db.prepare(
@@ -244,7 +250,7 @@ router.post('/register/user/verify', async (req, res) => {
   }
 
   db.prepare('DELETE FROM pending_registrations WHERE id = ?').run(pendingId);
-  notifyUser(userId, 'bem_vindo', `Bem-vindo(a) ao ReciclaJá, ${data.name.split(' ')[0]}! Crie seu primeiro agendamento de coleta.`);
+  notifyUser(userId, 'bem_vindo', `Bem-vindo(a) ao Pardela, ${data.name.split(' ')[0]}! Crie seu primeiro agendamento de coleta.`);
   const token = signToken({ id: userId, role: 'user' });
   return res.status(201).json({
     token, role: 'user',
@@ -279,7 +285,7 @@ router.post('/password-reset/confirm', async (req, res) => {
   if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres' });
   if (rateLimited(req, 'password-reset-verify', 10)) return res.status(429).json({ error: 'Muitas tentativas. Tente novamente mais tarde.' });
   const user = findUserByIdentifier(db, identifier);
-  if (!user || !checkCode(req, res, code, 'password_reset', user.id)) {
+  if (!user || !checkCode(res, code, 'password_reset', user.id)) {
     if (!user) return res.status(400).json({ error: 'Código inválido ou expirado' });
     return;
   }
@@ -301,7 +307,7 @@ router.post('/password-change/request', authMiddleware, requireRole('user'), asy
     await deliverIssuedCode(issued, contact.channel, contact.destination);
     return res.json({ message: 'Código enviado ao contato principal cadastrado' });
   } catch (error) {
-    const status = error.message.includes('recently') || error.message.includes('maximum') ? 429 : 503;
+    const status = error.status === 429 ? 429 : 503;
     return res.status(status).json({ error: error.message });
   }
 });
@@ -310,7 +316,7 @@ router.post('/password-change/confirm', authMiddleware, requireRole('user'), asy
   const { code, newPassword } = req.body;
   if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres' });
   if (rateLimited(req, 'password-change-verify', 10)) return res.status(429).json({ error: 'Muitas tentativas. Tente novamente mais tarde.' });
-  if (!checkCode(req, res, code, 'password_change', req.auth.id)) return;
+  if (!checkCode(res, code, 'password_change', req.auth.id)) return;
   const hash = await bcrypt.hash(newPassword, 10);
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, req.auth.id);
   return res.json({ message: 'Senha alterada com sucesso' });
@@ -335,7 +341,11 @@ router.post('/register/company', async (req, res) => {
     return res.status(400).json({ error: 'Selecione ao menos um tipo de material coletado' });
   }
 
-  const exists = db.prepare('SELECT id FROM companies WHERE email = ? OR cnpj = ?').get(email, cnpj.replace(/\D/g, ''));
+  if (rateLimited(req, 'register-company', 5)) {
+    return res.status(429).json({ error: 'Muitas tentativas. Tente novamente mais tarde.' });
+  }
+
+  const exists = db.prepare('SELECT id FROM companies WHERE lower(email) = lower(?) OR cnpj = ?').get(email, cnpj.replace(/\D/g, ''));
   if (exists) return res.status(409).json({ error: 'Já existe uma empresa com este e-mail ou CNPJ' });
 
   const hash = await bcrypt.hash(password, 10);
@@ -366,10 +376,13 @@ router.post('/register/company', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { email, identifier = email, password, as } = req.body;
   if (!identifier || !password) return res.status(400).json({ error: 'Informe seu e-mail ou telefone e a senha' });
+  if (rateLimited(req, 'login', 10)) {
+    return res.status(429).json({ error: 'Muitas tentativas de login. Tente novamente mais tarde.' });
+  }
 
   if (as === 'company') {
 
-    const company = db.prepare('SELECT * FROM companies WHERE email = ?').get(identifier);
+    const company = db.prepare('SELECT * FROM companies WHERE lower(email) = lower(?)').get(String(identifier).trim());
     if (!company) return res.status(401).json({ error: 'E-mail ou senha incorretos' });
 
     const ok = await bcrypt.compare(password, company.password_hash);
@@ -388,7 +401,7 @@ router.post('/login', async (req, res) => {
     });
   }
 
-  const user = findUserByIdentifier(identifier);
+  const user = findUserByIdentifier(db, identifier);
   if (!user) return res.status(401).json({ error: 'E-mail ou senha incorretos' });
 
   const ok = await bcrypt.compare(password, user.password_hash);

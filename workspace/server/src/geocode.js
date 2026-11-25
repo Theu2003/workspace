@@ -19,7 +19,7 @@ export async function geocode({ street, number, neighborhood, city, state, cep }
 
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'ReciclaJa/1.0 (reciclagem app)' },
+      headers: { 'User-Agent': 'Pardela/1.0 (reciclagem app)' },
       signal: controller.signal
     });
     if (!res.ok) return null;

@@ -7,7 +7,7 @@ export function generateCode() {
 }
 
 export function hashCode(code, purpose, recordId, secret = process.env.JWT_SECRET) {
-  if (!secret) throw new Error('JWT_SECRET is required to protect verification codes');
+  if (!secret) throw new Error('JWT_SECRET é obrigatório para proteger os códigos de verificação');
   return createHmac('sha256', secret).update(`${purpose}:${recordId}:${code}`).digest('hex');
 }
 
@@ -22,9 +22,9 @@ export async function sendVerificationCode(channel, recipient, code, adapters = 
     if (adapters.email) return adapters.email(recipient, code);
     const required = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASSWORD', 'SMTP_FROM'];
     const missing = required.filter((name) => !process.env[name]?.trim());
-    if (missing.length) throw new Error(`SMTP is not configured; set ${missing.join(', ')}`);
+    if (missing.length) throw new Error(`SMTP não configurado; defina ${missing.join(', ')}`);
     const port = Number(process.env.SMTP_PORT);
-    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('SMTP_PORT must be a valid port number');
+    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('SMTP_PORT deve ser uma porta válida');
 
     try {
       const transporter = nodemailer.createTransport({
@@ -36,11 +36,11 @@ export async function sendVerificationCode(channel, recipient, code, adapters = 
       await transporter.sendMail({
         from: process.env.SMTP_FROM,
         to: recipient,
-        subject: 'Seu código de verificação ReciclaJá',
+        subject: 'Seu código de verificação Pardela',
         text: `Seu código de verificação é ${code}. Ele expira em 10 minutos.`
       });
     } catch {
-      throw new Error('Email delivery failed; check the SMTP configuration and provider availability');
+      throw new Error('Falha no envio do e-mail; verifique a configuração SMTP e a disponibilidade do provedor');
     }
     return;
   }
@@ -49,20 +49,20 @@ export async function sendVerificationCode(channel, recipient, code, adapters = 
     if (adapters.phone) return adapters.phone(recipient, code);
     const required = ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_FROM_PHONE'];
     const missing = required.filter((name) => !process.env[name]?.trim());
-    if (missing.length) throw new Error(`Twilio is not configured; set ${missing.join(', ')}`);
+    if (missing.length) throw new Error(`Twilio não configurado; defina ${missing.join(', ')}`);
 
     try {
       const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
       await client.messages.create({
-        body: `Seu código de verificação ReciclaJá é ${code}. Ele expira em 10 minutos.`,
+        body: `Seu código de verificação Pardela é ${code}. Ele expira em 10 minutos.`,
         from: process.env.TWILIO_FROM_PHONE,
         to: recipient
       });
     } catch {
-      throw new Error('SMS delivery failed; check the Twilio configuration and provider availability');
+      throw new Error('Falha no envio do SMS; verifique a configuração do Twilio e a disponibilidade do provedor');
     }
     return;
   }
 
-  throw new Error('Unsupported verification channel');
+  throw new Error('Canal de verificação não suportado');
 }

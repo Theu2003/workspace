@@ -36,7 +36,10 @@ router.put('/me', requireRole('user'), (req, res) => {
   if (Object.prototype.hasOwnProperty.call(req.body, 'password')) {
     return res.status(400).json({ error: 'Use o fluxo de alteração de senha com código de verificação' });
   }
-  const name = req.body.name ?? user.name;
+  const name = String(req.body.name ?? user.name).trim();
+  if (!name) return res.status(400).json({ error: 'O nome não pode ficar vazio' });
+  if (name.length > 120) return res.status(400).json({ error: 'O nome deve ter no máximo 120 caracteres' });
+
   db.prepare('UPDATE users SET name = ? WHERE id = ?').run(name, req.auth.id);
   res.json({ message: 'Perfil atualizado' });
 });

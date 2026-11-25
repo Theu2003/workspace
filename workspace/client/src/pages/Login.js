@@ -47,7 +47,7 @@ export default function Login() {
             <div className="w-12 h-12 mx-auto rounded-xl bg-[#4a6741] flex items-center justify-center text-white text-lg font-bold">
               ♻
             </div>
-            <h1 className="mt-3 text-xl font-bold text-stone-800">Entrar no ReciclaJá</h1>
+            <h1 className="mt-3 text-xl font-bold text-stone-800">Entrar no Pardela</h1>
             <p className="mt-1 text-sm text-stone-400">Acesse sua conta pra agendar ou gerenciar coletas</p>
           </div>
 

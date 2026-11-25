@@ -28,10 +28,10 @@ test('migration preserves duplicate legacy phones as email-primary and only phon
       user_id INTEGER NOT NULL REFERENCES users(id)
     );
     INSERT INTO users (id, name, cpf, email, phone, password_hash) VALUES
-      (1, 'A', 'cpf1', 'a@example.invalid', '+14155552671', 'hash1'),
-      (2, 'B', 'cpf2', 'b@example.invalid', '+14155552671', 'hash2'),
+      (1, 'A', 'cpf1', 'a@example.invalid', '(38) 99999-9999', 'hash1'),
+      (2, 'B', 'cpf2', 'b@example.invalid', '(38) 99999-9999', 'hash2'),
       (3, 'C', 'cpf3', 'c@example.invalid', '', 'hash3'),
-      (4, 'D', 'cpf4', 'd@example.invalid', '+442071838750', 'hash4');
+      (4, 'D', 'cpf4', 'd@example.invalid', '(11) 99999-9999', 'hash4');
     INSERT INTO addresses (id, user_id) VALUES (10, 1);
     INSERT INTO collections (id, user_id) VALUES (20, 2);
   `);
@@ -64,19 +64,28 @@ test('migration preserves duplicate legacy phones as email-primary and only phon
   migrateUserContactColumns({ db, sqlDb, saveDb() {}, logger: { warn: (message) => warnings.push(message) } });
 
   const users = query('SELECT id, email, phone, primary_contact FROM users ORDER BY id');
-  assert.equal(users.length, 4);
-  assert.equal(users[0].phone, '+14155552671');
-  assert.equal(users[1].phone, '+14155552671');
-  assert.equal(users[2].phone, '');
-  assert.equal(users[3].phone, '+442071838750');
-  assert.ok(users.every((user) => user.primary_contact === 'email'));
-  assert.deepEqual(query('SELECT * FROM addresses'), [{ id: 10, user_id: 1 }]);
-  assert.deepEqual(query('SELECT * FROM collections'), [{ id: 20, user_id: 2 }]);
-  assert.deepEqual(query('PRAGMA foreign_key_check'), []);
-  assert.ok(warnings.some((message) => message.includes('retained')));
-  assert.equal(findUserByIdentifier(db, '+14155552671'), undefined);
-  assert.equal(findUserByIdentifier(db, 'a@example.invalid').id, 1);
-  assert.deepEqual(getPrimaryContact(users[0]), { channel: 'email', destination: 'a@example.invalid' });
+ assert.equal(users.length, 4);
+assert.equal(users[0].phone, '(38) 99999-9999');
+assert.equal(users[1].phone, '(38) 99999-9999');
+assert.equal(users[2].phone, '');
+assert.equal(users[3].phone, '(11) 99999-9999');
+
+assert.ok(users.every((user) => user.primary_contact === 'email'));
+
+assert.deepEqual(query('SELECT * FROM addresses'), [{ id: 10, user_id: 1 }]);
+assert.deepEqual(query('SELECT * FROM collections'), [{ id: 20, user_id: 2 }]);
+
+assert.deepEqual(query('PRAGMA foreign_key_check'), []);
+
+assert.ok(warnings.some((message) => message.includes('retained')));
+
+assert.equal(findUserByIdentifier(db, '(38) 99999-9999'), undefined);
+assert.equal(findUserByIdentifier(db, 'a@example.invalid').id, 1);
+
+assert.deepEqual(getPrimaryContact(users[0]), {
+  channel: 'email',
+  destination: 'a@example.invalid'
+});
 
   sqlDb.run(
     "INSERT INTO users (name, cpf, email, phone, password_hash, primary_contact) VALUES ('E', 'cpf5', NULL, '+14155552671', 'hash5', 'phone')"

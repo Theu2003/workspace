@@ -1,4 +1,4 @@
-# 📡 texto API — Documentação das APIs do ReciclaJá
+# 📡 texto API — Documentação das APIs do Pardela
 
 Documentação completa de todas as APIs utilizadas no projeto:
 
@@ -274,7 +274,7 @@ Serviços de terceiros utilizados pelo sistema (todos gratuitos e sem chave de a
 | `https://nominatim.openstreetmap.org/search?format=json&q=...` | **Geocodificação** (endereço → latitude/longitude). Usada ao cadastrar usuário/empresa/endereço e ao criar coleta. Timeout de 8s |
 | `https://nominatim.openstreetmap.org/reverse?format=json&lat=...&lon=...` | **Geocodificação reversa** (GPS → endereço). Botão "Usar minha localização (GPS)" no cadastro |
 
-⚠️ **Limite de uso:** máx. 1 requisição por segundo (política do Nominatim). O servidor envia `User-Agent: ReciclaJa/1.0` como exigido pela API.
+⚠️ **Limite de uso:** máx. 1 requisição por segundo (política do Nominatim). O servidor envia `User-Agent: Pardela/1.0` como exigido pela API.
 
 ## 🧭 OSRM (Open Source Routing Machine) — Rotas
 
@@ -325,4 +325,4 @@ Usuário                        Empresa A                Empresa B
 
 ---
 
-_Última atualização: 13/11/2026 — ReciclaJá v1.0_
+_Última atualização: 13/11/2026 — Pardela v1.0_

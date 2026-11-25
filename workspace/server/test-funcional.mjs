@@ -1,4 +1,4 @@
-// Teste funcional end-to-end da API ReciclaJá
+// Teste funcional end-to-end da API Pardela
 // Exercita: health, cadastro, login, perfil, endereços, coletas,
 // aprovação de empresa (admin), fluxo de status, chat, notificações, admin.
 import fs from 'node:fs';

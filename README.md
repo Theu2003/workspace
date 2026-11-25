@@ -1,4 +1,4 @@
-# ReciclaJá — Plataforma de Agendamento de Coletoras Recicláveis
+# Pardela — Plataforma de Agendamento de Coletas Recicláveis
 
 > Sistema completo para conectar usuários (geradores de resíduos) a empresas de coleta/reciclagem, com fluxo completo: solicitação → aceitação → agendamento → coleta → conclusão.
 
@@ -25,7 +25,7 @@
 
 ## 🎯 Visão Geral
 
-O **ReciclaJá** é uma aplicação full-stack (React + Express + SQLite) que permite:
+O **Pardela** é uma aplicação full-stack (React + Express + SQLite) que permite:
 
 | Ator | Funcionalidades |
 |------|-----------------|
@@ -72,7 +72,7 @@ O **ReciclaJá** é uma aplicação full-stack (React + Express + SQLite) que pe
 │  │  - Helpers: geocode (Nominatim), notify, parseMaterials │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                              │                                  │
-│                    Arquivo SQLite (server/data/ecopickup.sqlite)│
+│                    Arquivo SQLite (server/data/pardela.sqlite)│
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -213,7 +213,7 @@ workspace/
         ├── .env.example      # Template
         ├── package.json
         ├── data/
-        │   └── ecopickup.sqlite   # Banco SQLite (criado automaticamente)
+        │   └── pardela.sqlite   # Banco SQLite (criado automaticamente)
         ├── varredura.mjs     # Script de limpeza de dados de teste
         ├── test-funcional.mjs # Teste E2E automatizado da API
         └── src/
@@ -273,7 +273,7 @@ A documentação completa e atualizada de **todos os endpoints** (internos + ext
 
 ## 🗄️ Banco de Dados
 
-**Tecnologia:** SQLite via `sql.js` (WASM) — arquivo único em `server/data/ecopickup.sqlite`
+**Tecnologia:** SQLite via `sql.js` (WASM) — arquivo único em `server/data/pardela.sqlite`
 
 ### Tabelas
 
@@ -477,7 +477,7 @@ npm start
 **Recomendações:**
 - Use **reverse proxy** (Nginx/Caddy) na frente: TLS, rate limit, logs
 - SQLite em arquivo → certifique-se que o usuário do processo tem escrita em `server/data/`
-- Backups periódicos do `ecopickup.sqlite`
+- Backups periódicos do `pardela.sqlite`
 
 ### Frontend (Produção)
 
@@ -496,7 +496,7 @@ server {
 
     # Frontend estático
     location / {
-        root /var/www/reciclaja/client/dist;
+        root /var/www/pardela/client/dist;
         try_files $uri $uri/ /index.html;
     }
 
@@ -605,8 +605,8 @@ Projeto educacional / demonstração. Uso livre para estudos.
 
 ---
 
-> **Última atualização:** 2026-11-13 — ReciclaJá v1.0  
-> **Autor:** Mateus Martins Peres  
+> **Última atualização:** 2026-11-13 — Pardela v1.0
+> **Autor:** Mateus Martins Peres
 > **Contato:** mateusmartinsperes53@gmail.com
 
 ---

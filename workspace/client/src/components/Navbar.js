@@ -42,7 +42,7 @@ export default function Navbar() {
               ♻
             </span>
             <span className="text-lg font-bold tracking-tight text-stone-800">
-              Recicla<span className="text-[#6b8f47]">Já</span>
+              Pardela
             </span>
           </Link>
 

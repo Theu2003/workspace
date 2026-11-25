@@ -1,4 +1,4 @@
-# 🌐 APIs Externas Utilizadas — ReciclaJá
+# 🌐 APIs Externas Utilizadas — Pardela
 
 > Documento de referência com **todas as APIs de terceiros** usadas no projeto, suas URLs oficiais, endpoints, limites de uso, políticas e links para documentação original.
 
@@ -45,7 +45,7 @@
 | Regra | Detalhe |
 |-------|---------|
 | **Rate limit** | **Máx. 1 requisição por segundo** (por aplicação/IP) |
-| **User-Agent** | **Obrigatório** — deve identificar sua aplicação (ex: `User-Agent: ReciclaJa/1.0`) |
+| **User-Agent** | **Obrigatório** — deve identificar sua aplicação (ex: `User-Agent: Pardela/1.0`) |
 | **Referer** | Recomendado enviar header `Referer` válido |
 | **Cache** | Cacheie resultados sempre que possível |
 | **Uso proibido** | Autocomplete client-side, bulk geocoding, scraping |
@@ -58,7 +58,7 @@
 const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
 
 const res = await fetch(url, {
-  headers: { 'User-Agent': 'ReciclaJa/1.0 (reciclagem app)' },
+  headers: { 'User-Agent': 'Pardela/1.0 (reciclagem app)' },
   signal: controller.signal  // timeout 8s
 });
 ```
@@ -221,7 +221,7 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 Antes de colocar em produção, **verifique cada item**:
 
 ### Nominatim
-- [ ] User-Agent customizado configurado no backend (`ReciclaJa/1.0`)
+- [ ] User-Agent customizado configurado no backend (`Pardela/1.0`)
 - [ ] Rate limit respeitado (1 req/s) — implemente fila/delay se necessário
 - [ ] Cache de resultados implementado (Redis, memória, localStorage)
 - [ ] Atribuição "© OpenStreetMap contributors" visível se mostrar endereços
@@ -274,5 +274,5 @@ Antes de colocar em produção, **verifique cada item**:
 
 ---
 
-> **Última atualização:** 13/11/2026 — ReciclaJá v1.0  
+> **Última atualização:** 13/11/2026 — Pardela v1.0  
 > **Nota:** Políticas de uso podem mudar. Consulte sempre os links oficiais antes de decisões de arquitetura.

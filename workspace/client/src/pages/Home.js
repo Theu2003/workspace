@@ -42,7 +42,7 @@ export default function Home() {
               Reciclar não precisa ser complicado.
             </h1>
             <p className="mt-5 text-lg text-white/75 max-w-lg leading-relaxed">
-              Marque uma coleta, separe o que tem, e uma empresa conectada ao ReciclaJá vai buscar na sua casa.
+              Marque uma coleta, separe o que tem, e uma empresa conectada ao Pardela vai buscar na sua casa.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link
@@ -94,7 +94,7 @@ export default function Home() {
               <div className="mt-5 bg-white/[0.06] rounded-xl p-3.5 flex items-center gap-3">
                 <span className="w-8 h-8 rounded-lg bg-[#6b8f47] flex items-center justify-center text-sm">🚚</span>
                 <div className="flex-1">
-                  <p className="text-xs font-semibold">Recicla Fácil Coletas</p>
+                  <p className="text-xs font-semibold">Pardela Coletas</p>
                   <p className="text-[11px] text-white/40">a caminho</p>
                 </div>
                 <Truck className="w-5 h-5 text-white/40" />

@@ -1,4 +1,4 @@
-# 📝 Changelog — ReciclaJá
+# 📝 Changelog — Pardela
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
@@ -35,7 +35,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ### 🔧 Técnico
 - Backend: Express 4 + sql.js (SQLite WASM) + bcryptjs + jsonwebtoken
 - Frontend: React 18 + Vite 6 + Tailwind 4 + React Router 6 + Leaflet
-- Banco: SQLite arquivo único (`server/data/ecopickup.sqlite`)
+- Banco: SQLite arquivo único (`server/data/pardela.sqlite`)
 - Migrações ad-hoc via ALTER TABLE idempotentes no `db.js`
 - Variáveis de ambiente via dotenv (`.env` não versionado)
 

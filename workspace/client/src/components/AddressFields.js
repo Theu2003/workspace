@@ -22,7 +22,7 @@ export default function AddressFields({ values, onChange, required = true }) {
 
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=pt-BR`,
-            { headers: { 'User-Agent': 'ReciclaJa/1.0 (reciclagem app)' } }
+            { headers: { 'User-Agent': 'Pardela/1.0 (reciclagem app)' } }
           );
           const data = await res.json();
           if (data && data.address) {

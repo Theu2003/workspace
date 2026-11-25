@@ -16,7 +16,43 @@ import messageRoutes from './routes/messages.js';
 
 const app = express();
 
-app.use(cors());
+// Origens liberadas para chamadas de navegador de OUTROS domínios.
+// Liste-as em CORS_ORIGINS (separadas por vírgula). Requisições same-origin,
+// curl e apps nativos (sem header Origin) continuam permitidas.
+const allowedOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+function isDevOrigin(origin) {
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === 'localhost'
+      || hostname === '127.0.0.1'
+      || hostname === '::1'
+      || /^10\.\d+\.\d+\.\d+$/.test(hostname)
+      || /^192\.168\.\d+\.\d+$/.test(hostname)
+      || /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(hostname);
+  } catch {
+    return false;
+  }
+}
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (isDevOrigin(origin)) return callback(null, true);
+    return callback(null, false);
+  }
+}));
+
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  next();
+});
 
 app.use(express.json({ limit: '1mb' }));
 
@@ -33,7 +69,19 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'Rota não encontrada' });
+});
+
+app.use((err, _req, res, _next) => {
+  const status = err.status || err.statusCode || 500;
+  if (status >= 500) console.error('Erro não tratado na API:', err);
+  res.status(status).json({
+    error: status === 400 ? 'Requisição inválida' : 'Erro interno do servidor'
+  });
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`ReciclaJá API rodando na porta ${PORT} (acessível em qualquer rede)`);
+  console.log(`Pardela API rodando na porta ${PORT} (acessível em qualquer rede)`);
 });

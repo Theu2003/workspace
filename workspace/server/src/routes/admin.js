@@ -84,6 +84,9 @@ router.post('/companies/:id/reject', (req, res) => {
     const company = db.prepare('SELECT id, name FROM companies WHERE id = ?').get(id);
     if (!company) return res.status(404).json({ error: 'Empresa não encontrada' });
 
+    // Devolve as coletas para a fila antes de remover a empresa,
+    // senão elas ficam com company_id NULL e status preso em 'aceita'.
+    db.prepare("UPDATE collections SET company_id = NULL, status = 'pendente', updated_at = datetime('now') WHERE company_id = ?").run(id);
     db.prepare('DELETE FROM companies WHERE id = ?').run(id);
 
     res.json({ message: 'Empresa rejeitada e removida' });
@@ -137,6 +140,7 @@ router.delete('/companies/:id', (req, res) => {
 
     db.prepare('DELETE FROM notifications WHERE company_id = ?').run(id);
     db.prepare("DELETE FROM messages WHERE (sender_type = 'company' AND sender_id = ?) OR (receiver_type = 'company' AND receiver_id = ?)").run(id, id);
+    db.prepare("UPDATE collections SET company_id = NULL, status = 'pendente', updated_at = datetime('now') WHERE company_id = ?").run(id);
 
     db.prepare('DELETE FROM companies WHERE id = ?').run(id);
 
@@ -157,8 +161,13 @@ router.delete('/users/:id', (req, res) => {
       return res.status(403).json({ error: 'Não é possível excluir administradores' });
     }
 
+    // Precisa remover as dependências antes do usuário: collections.user_id
+    // não tem ON DELETE CASCADE, então a exclusão direta falhava com erro de FK.
+    db.prepare('DELETE FROM collection_messages WHERE collection_id IN (SELECT id FROM collections WHERE user_id = ?)').run(id);
+    db.prepare('DELETE FROM collections WHERE user_id = ?').run(id);
     db.prepare('DELETE FROM notifications WHERE user_id = ?').run(id);
     db.prepare('DELETE FROM addresses WHERE user_id = ?').run(id);
+    db.prepare('DELETE FROM verification_codes WHERE user_id = ?').run(id);
 
     db.prepare('DELETE FROM users WHERE id = ?').run(id);
 

@@ -11,11 +11,18 @@ import { migrateUserContactColumns } from './schema-migrations.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const dataDir = path.join(__dirname, '..', 'data');
+// DATA_DIR permite isolar o banco (usado pelos testes de rota).
+const dataDir = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(__dirname, '..', 'data');
 
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-const dbPath = path.join(dataDir, 'ecopickup.sqlite');
+const dbPath = path.join(dataDir, 'pardela.sqlite');
+const legacyDbPath = path.join(dataDir, 'ecopickup.sqlite');
+if (!fs.existsSync(dbPath) && fs.existsSync(legacyDbPath)) {
+  fs.copyFileSync(legacyDbPath, dbPath);
+}
 
 const SQL = await initSqlJs();
 
@@ -33,6 +40,10 @@ sqlDb.run('PRAGMA foreign_keys = ON');
 
 function saveDb() {
   const data = sqlDb.export();
+  // sql.js fecha e reabre a conexão ao exportar, e as pragmas de conexão
+  // voltam ao padrão (foreign_keys = OFF). Reativamos a cada gravação,
+  // senão os ON DELETE CASCADE / SET NULL param de valer após a 1ª escrita.
+  sqlDb.run('PRAGMA foreign_keys = ON');
   const buffer = Buffer.from(data);
   fs.writeFileSync(dbPath, buffer);
 }
@@ -302,22 +313,32 @@ if (!existingAdmin) {
   console.log(`✅ Usuário administrador criado (${adminEmail})`);
 }
 
-try {
-  db.exec(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'`);
-} catch {
+// Índices para as consultas mais usadas (listas, dashboards e contadores).
+// Sem eles o SQLite varre a tabela inteira e ordena em B-tree temporária.
+db.exec(`
+  CREATE INDEX IF NOT EXISTS collections_user_id_idx ON collections(user_id);
+  CREATE INDEX IF NOT EXISTS collections_company_id_idx ON collections(company_id);
+  CREATE INDEX IF NOT EXISTS collections_status_idx ON collections(status);
+  CREATE INDEX IF NOT EXISTS collections_date_idx ON collections(date);
+  CREATE INDEX IF NOT EXISTS addresses_user_id_idx ON addresses(user_id);
+  CREATE INDEX IF NOT EXISTS notifications_user_id_idx ON notifications(user_id);
+  CREATE INDEX IF NOT EXISTS notifications_company_id_idx ON notifications(company_id);
+  CREATE INDEX IF NOT EXISTS messages_receiver_idx ON messages(receiver_type, receiver_id, is_read);
+  CREATE INDEX IF NOT EXISTS messages_sender_idx ON messages(sender_type, sender_id);
+  CREATE INDEX IF NOT EXISTS collection_messages_collection_idx ON collection_messages(collection_id);
+  CREATE INDEX IF NOT EXISTS companies_city_approved_idx ON companies(city, is_approved);
+  CREATE INDEX IF NOT EXISTS users_email_lower_idx ON users(lower(email));
+`);
 
-}
-
-try {
-  db.exec(`ALTER TABLE companies ADD COLUMN is_approved INTEGER NOT NULL DEFAULT 0`);
-} catch {
-
-}
-
-try {
-  db.exec(`ALTER TABLE collections ADD COLUMN rejected_by TEXT NOT NULL DEFAULT '[]'`);
-} catch {
-
-}
+// Limpeza de códigos expirados, de códigos órfãos (cadastro pendente removido)
+// e de cadastros pendentes vencidos. Mantém as tabelas de verificação pequenas.
+const cleanupNow = Date.now();
+db.exec(`
+  DELETE FROM verification_codes
+   WHERE pending_id IS NOT NULL
+     AND pending_id NOT IN (SELECT id FROM pending_registrations);
+  DELETE FROM verification_codes WHERE expires_at < ${cleanupNow - 24 * 60 * 60 * 1000};
+  DELETE FROM pending_registrations WHERE expires_at < ${cleanupNow};
+`);
 
 export default db;

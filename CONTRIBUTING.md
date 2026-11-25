@@ -1,4 +1,4 @@
-# 🤝 Guia de Contribuição — ReciclaJá
+# 🤝 Guia de Contribuição — Pardela
 
 Obrigado por querer contribuir! Este documento orienta como participar do desenvolvimento.
 

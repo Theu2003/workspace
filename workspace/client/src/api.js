@@ -1,8 +1,8 @@
 // Titulo: api
 // Autor: Mateus Martins Peres
 // Finalidade: Modulo do frontend responsavel por api.
-const TOKEN_KEY = 'reciclaja_token';
-const ROLE_KEY = 'reciclaja_role';
+const TOKEN_KEY = 'pardela_token';
+const ROLE_KEY = 'pardela_role';
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -36,7 +36,9 @@ export async function api(path, options = {}) {
 
   const res = await fetch(`/api${path}`, { ...options, headers });
 
-  if (res.status === 401) {
+  // Só encerra a sessão quando o 401 vem de uma rota autenticada.
+  // Falha de login/senha (rota /auth/*) precisa exibir a mensagem, não recarregar a página.
+  if (res.status === 401 && token && !path.startsWith('/auth/')) {
     clearAuth();
     window.location.href = '/login';
     throw new Error('Sessão expirada');

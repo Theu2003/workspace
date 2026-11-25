@@ -1,6 +1,6 @@
 // Titulo: sounds
 // Finalidade: Modulo do frontend responsavel pelos sons de notificacao.
-const UNSEEN_KEY = 'reciclaja_seen_notification_ids';
+const UNSEEN_KEY = 'pardela_seen_notification_ids';
 
 const SOUNDS = {
   message: '/mp3/mp3_1.mp3',

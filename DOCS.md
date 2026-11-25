@@ -1,4 +1,4 @@
-# 📚 Índice de Documentação — ReciclaJá
+# 📚 Índice de Documentação — Pardela
 
 > Navegação rápida para toda a documentação do projeto.
 
@@ -160,7 +160,7 @@ USE_HTTPS=1 npm run dev
 - [ ] `npm ci --omit=dev`
 - [ ] Reverse proxy (Nginx/Caddy) com TLS
 - [ ] Permissão de escrita em `server/data/`
-- [ ] Backup periódico do `ecopickup.sqlite`
+- [ ] Backup periódico do `pardela.sqlite`
 - [ ] Process manager (PM2, systemd, Docker)
 
 ### Frontend
@@ -238,5 +238,5 @@ import NovaPagina from './pages/NovaPagina';
 
 ---
 
-> **Última atualização:** 13/11/2026 — ReciclaJá v1.0  
+> **Última atualização:** 13/11/2026 — Pardela v1.0
 > **Autor:** Mateus Martins Peres

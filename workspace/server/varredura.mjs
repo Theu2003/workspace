@@ -3,7 +3,7 @@
 import initSqlJs from 'sql.js';
 import fs from 'node:fs';
 const SQL = await initSqlJs();
-const db = new SQL.Database(fs.readFileSync('data/ecopickup.sqlite'));
+const db = new SQL.Database(fs.readFileSync('data/pardela.sqlite'));
 const q = (sql, p = []) => db.exec(sql, p)[0]?.values ?? [];
 const userIds = q(`SELECT id FROM users WHERE email LIKE 'teste-cbf-%'`).map(r => r[0]);
 const compIds = q(`SELECT id FROM companies WHERE email LIKE 'teste-cbf-%'`).map(r => r[0]);
@@ -21,7 +21,7 @@ for (const cid of compIds) {
   db.run(`DELETE FROM messages WHERE (sender_type = 'company' AND sender_id = ?) OR (receiver_type = 'company' AND receiver_id = ?)`, [cid, cid]);
   db.run('DELETE FROM companies WHERE id = ?', [cid]);
 }
-fs.writeFileSync('data/ecopickup.sqlite', Buffer.from(db.export()));
+fs.writeFileSync('data/pardela.sqlite', Buffer.from(db.export()));
 console.log('varredura concluída. estado do banco:',
   '| usuarios teste:', q(`SELECT COUNT(*) FROM users WHERE email LIKE 'teste-cbf-%'`)[0][0],
   '| empresas teste:', q(`SELECT COUNT(*) FROM companies WHERE email LIKE 'teste-cbf-%'`)[0][0],

@@ -16,6 +16,7 @@ export default function RegisterUser() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(1);
   const [channel, setChannel] = useState('email');
   const [pendingId, setPendingId] = useState('');
   const [code, setCode] = useState('');
@@ -30,6 +31,10 @@ export default function RegisterUser() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
+    if (step === 1) {
+      setStep(2);
+      return;
+    }
     setLoading(true);
     try {
       const data = await api('/auth/register/user', {
@@ -111,7 +116,17 @@ export default function RegisterUser() {
               </button>
             </form>
           ) : <form onSubmit={handleSubmit} className="space-y-3.5">
-            <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="flex items-center justify-between text-xs text-stone-500 mb-2">
+                <span>Etapa {step} de 2</span>
+                <span>{step === 1 ? 'Dados da conta' : 'Endereço principal'}</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-stone-100">
+                <div className={`h-full rounded-full bg-[#6b8f47] transition-all ${step === 1 ? 'w-1/2' : 'w-full'}`} />
+              </div>
+            </div>
+
+            {step === 1 ? <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-stone-700 mb-1">Nome completo</label>
                 <input className={inputClass} value={form.name} required onChange={(e) => setField('name', e.target.value)} />
@@ -141,18 +156,26 @@ export default function RegisterUser() {
                 <label className="block text-sm font-medium text-stone-700 mb-1">Senha</label>
                 <input type="password" className={inputClass} value={form.password} required minLength={6} onChange={(e) => setField('password', e.target.value)} />
               </div>
-            </div>
-
-            <div className="pt-3 border-t border-stone-100">
-              <h3 className="font-semibold text-stone-800 text-sm mb-3">Endereço principal</h3>
-              <AddressFields values={form} onChange={setField} />
-            </div>
+            </div> : (
+              <div className="pt-1">
+                <h3 className="font-semibold text-stone-800 text-sm mb-3">Endereço principal</h3>
+                <AddressFields values={form} onChange={setField} />
+              </div>
+            )}
 
             {error && <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2.5">{error}</div>}
 
-            <button type="submit" disabled={loading} className="w-full py-2.5 rounded-lg bg-[#4a6741] text-white font-semibold hover:bg-[#364a25] transition-colors disabled:opacity-60">
-              {loading ? 'Criando conta...' : 'Criar conta'}
-            </button>
+            <div className="flex gap-3">
+              {step === 2 && (
+                <button type="button" disabled={loading} onClick={() => { setError(''); setStep(1); }}
+                  className="w-1/3 py-2.5 rounded-lg border border-stone-200 text-stone-600 font-semibold hover:bg-stone-50 disabled:opacity-60">
+                  Voltar
+                </button>
+              )}
+              <button type="submit" disabled={loading} className={`${step === 2 ? 'w-2/3' : 'w-full'} py-2.5 rounded-lg bg-[#4a6741] text-white font-semibold hover:bg-[#364a25] transition-colors disabled:opacity-60`}>
+                {step === 1 ? 'Continuar para endereço' : loading ? 'Criando conta...' : 'Criar conta'}
+              </button>
+            </div>
           </form>}
 
           <p className="mt-5 text-center text-sm text-stone-400">
